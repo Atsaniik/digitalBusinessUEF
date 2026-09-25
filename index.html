@@ -1,0 +1,951 @@
+
+    <html>
+    <head>
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style type="text/css">
+        body {
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #e0e0e0;
+            position: relative;
+        }
+        #mynetwork {
+            width: 100vw;
+            height: 100vh;
+            border: 1px solid lightgray;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            transition: opacity 0.5s ease;
+        }
+        #diagram-title {
+            position: absolute;
+            top: 10px;
+            left: 50px;
+            z-index: 100;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 10px 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            font-size: 24px;
+            color: #333;
+            cursor: move;
+            user-select: none;
+        }
+        #loading-bar {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 300px;
+            height: 30px;
+            background-color: #ddd;
+            border-radius: 15px;
+            overflow: hidden;
+            z-index: 150;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        #loading-progress {
+            width: 0%;
+            height: 100%;
+            background-color: #4CAF50;
+            transition: width 0.3s ease;
+        }
+        #loading-percentage {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            z-index: 151;
+        }
+        #config-container {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: calc(100vh - 40px);
+            max-width: 20vw;
+            overflow-y: auto;
+            padding: 10px;
+        }
+        #description-container {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: calc(100vh - 40px);
+            max-width: 20vw;
+            overflow-y: auto;
+            padding: 10px;
+        }
+        #save-button-container {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            display: flex;
+            justify-content: center;
+        }
+        #save-selection {
+            background-color: white;
+            color: #333333;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            transition: background-color 0.3s ease;
+        }
+        #save-selection:hover {
+            background-color: #45a049;
+        }
+        #node-config, #physics-config, #description-table {
+            background-color: white;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            max-width: 100%;
+            overflow-x: auto;
+        }
+        #node-config .filter-group, #description-table .table-group {
+            margin-bottom: 20px;
+        }
+        #node-config .filter-group label, #description-table .table-group label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+            
+        }
+        .label-search { 
+            color: #0066cc; /* Added color for Node Label Search label */
+            display: block;              /* ensures it takes full width */
+            text-align: center;          /* centers the text */
+            font-size: 1.2em;            /* makes the label larger */
+            font-weight: bold;           /* optional: makes it stand out */
+            margin-bottom: 10px;         /* space between label and input */
+            
+        }
+        #label-search {
+                        display: block;
+                        margin: 0 auto;
+                        width: 80%;
+                        height: 40px;            /* increases height */
+                        padding: 10px 12px;      /* adds internal space */
+                        font-size: 1.1em;        /* makes text slightly larger */
+                        border: 1px solid #ccc;
+                        border-radius: 6px;      /* optional rounded corners */
+                        box-sizing: border-box;
+                    }
+        #node-config select, #node-config input[type="number"], #node-config input[type="text"], #description-table table {
+            width: 100%;
+            padding: 5px;
+            border-radius: 3px;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+        }
+        #node-config .size-inputs {
+            display: flex;
+            gap: 5px;
+        }
+        #node-config .size-inputs input[type="number"] {
+            flex: 1;
+        }
+        .legend {
+            cursor: pointer;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 8px 12px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            font-size: 14px;
+            font-weight: bold;
+            color: #333;
+            text-align: center;
+        }
+        .panel-hidden {
+            display: none;
+        }
+        #node-config p {
+            font-size: 12px;
+            color: #555;
+            margin: 5px 0;
+        }
+        .vis-icon {
+            font-family: "Font Awesome 5 Free" !important;
+            font-weight: 900;
+        }
+        #description-table table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        #description-table th, #description-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        #description-table th {
+            background-color: #f2f2f2;
+        }
+        #color-select, #shape-select, #title-select, #edge-color-select {
+            height: 100px;
+        }
+        #node-edge-count {
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 8px 12px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            font-size: 14px;
+            font-weight: bold;
+            color: #333;
+            text-align: center;
+        }
+        .suggestions {
+            position: absolute;
+            background-color: white;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            max-height: 150px;
+            overflow-y: auto;
+            width: 100%;
+            z-index: 200;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: none;
+        }
+        .suggestion-item {
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+        .suggestion-item:hover {
+            background-color: #f0f0f0;
+        }
+    </style>
+    </head>
+    <body>
+    <h2 id="diagram-title">UEF DBS Course</h2>
+    <div id="mynetwork"></div>
+    <div id="loading-bar">
+        <div id="loading-progress"></div>
+        <span id="loading-percentage">0%</span>
+    </div>
+    <div id="config-container">
+        <div class="legend" onclick="togglePanel('node-config')">Node & Edge Selection</div>
+        <div id="node-config" class="panel-hidden">
+            <div class="filter-group">
+                <label class="label-search">Node Label Search</label>
+                <input type="text" id="label-search" placeholder="Enter labels, e.g., Node1,Node2" oninput="updateSuggestions()">
+                <div id="label-suggestions" class="suggestions"></div>
+            </div>
+            <div class="filter-group">
+                <label>Maximum Nodes to Display</label>
+                <select id="max-display-select" onchange="updateNodes()">
+                                <option value="1">1</option>
+            <option value="5">5</option>
+            <option value="10">10</option>
+            <option value="20">20</option>
+            <option value="30">30</option>
+            <option value="50">50</option>
+            <option value="60">60</option>
+            <option value="70">70</option>
+            <option value="80">80</option>
+            <option value="90">90</option>
+            <option value="100" selected>100</option>
+            <option value="108">108</option>
+            <option value="150">150</option>
+            <option value="200">200</option>
+            <option value="300">300</option>
+            <option value="400">400</option>
+            <option value="500">500</option>
+            <option value="1000">1000</option>
+            <option value="2000">2000</option>
+            <option value="5000">5000</option>
+            <option value="10000">10000</option>
+            <option value="20000">20000</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Node Color</label>
+                <select id="color-select" multiple onchange="updateNodes()">
+                    <option value="all" selected>All</option>
+                                <option value="blue">blue</option>
+            <option value="green">green</option>
+            <option value="red">red</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Node Shape</label>
+                <select id="shape-select" multiple onchange="updateNodes()">
+                    <option value="all" selected>All</option>
+                                <option value="dot">dot</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Node Size (0.06-22.0)</label>
+                <div class="size-inputs">
+                    <input type="number" id="size-min" value="0" placeholder="Min" min="0" oninput="updateNodes()">
+                    <input type="number" id="size-max" placeholder="Max" min="0" oninput="updateNodes()">
+                </div>
+            </div>
+
+            <div class="filter-group">
+                <label>Node Title (Class)</label>
+                <select id="title-select" multiple onchange="updateNodes()">
+                    <option value="all" selected>All</option>
+                                <option value="Kielibuusti.fi">Kielibuusti.fi</option>
+            <option value="abloy.fi-0.11_2572">abloy.fi-0.11_2572</option>
+            <option value="aboutcookies.org">aboutcookies.org</option>
+            <option value="adform.com">adform.com</option>
+            <option value="adobe.com">adobe.com</option>
+            <option value="aka.fi">aka.fi</option>
+            <option value="albacross.com">albacross.com</option>
+            <option value="ammattikorkeakouluun.fi">ammattikorkeakouluun.fi</option>
+            <option value="amsystem.com">amsystem.com</option>
+            <option value="aoe.fi">aoe.fi</option>
+            <option value="asuntoverkko.com">asuntoverkko.com</option>
+            <option value="autismiliitto.fi">autismiliitto.fi</option>
+            <option value="autodistribution.international">autodistribution.international</option>
+            <option value="avara.fi">avara.fi</option>
+            <option value="avointiede.fi">avointiede.fi</option>
+            <option value="bcpohjois-savo.fi">bcpohjois-savo.fi</option>
+            <option value="bromanasia.com">bromanasia.com</option>
+            <option value="bromangroup.fi-0.06_4532">bromangroup.fi-0.06_4532</option>
+            <option value="bromanlogistics.fi">bromanlogistics.fi</option>
+            <option value="bromanus.com">bromanus.com</option>
+            <option value="businessjoensuu.fi">businessjoensuu.fi</option>
+            <option value="chatgpt.com">chatgpt.com</option>
+            <option value="cloudflare.com">cloudflare.com</option>
+            <option value="co2data.fi">co2data.fi</option>
+            <option value="compass-group.fi">compass-group.fi</option>
+            <option value="cookiebot.com">cookiebot.com</option>
+            <option value="cookiedatabase.org">cookiedatabase.org</option>
+            <option value="cookiehub.com">cookiehub.com</option>
+            <option value="cookiepedia.co.uk">cookiepedia.co.uk</option>
+            <option value="cookieyes.com">cookieyes.com</option>
+            <option value="cpc-germania.com">cpc-germania.com</option>
+            <option value="creativecommons.fi">creativecommons.fi</option>
+            <option value="creativecommons.org">creativecommons.org</option>
+            <option value="degruyterbrill.com">degruyterbrill.com</option>
+            <option value="digivisio2030.fi">digivisio2030.fi</option>
+            <option value="dmptuuli.fi">dmptuuli.fi</option>
+            <option value="doi.org">doi.org</option>
+            <option value="draftprogram.com">draftprogram.com</option>
+            <option value="dvv.fi">dvv.fi</option>
+            <option value="e-exam.fi">e-exam.fi</option>
+            <option value="easywhistle.com">easywhistle.com</option>
+            <option value="edition.fi">edition.fi</option>
+            <option value="eduplan.fi">eduplan.fi</option>
+            <option value="eduuni.fi">eduuni.fi</option>
+            <option value="ekokompassi.fi">ekokompassi.fi</option>
+            <option value="elamassa.fi">elamassa.fi</option>
+            <option value="emmi.fi">emmi.fi</option>
+            <option value="enlapser.cloud">enlapser.cloud</option>
+            <option value="epressi.com">epressi.com</option>
+            <option value="eu4dual.education">eu4dual.education</option>
+            <option value="europa.eu">europa.eu</option>
+            <option value="euspen.eu">euspen.eu</option>
+            <option value="facebook.com">facebook.com</option>
+            <option value="fairdata.fi">fairdata.fi</option>
+            <option value="fcg.fi">fcg.fi</option>
+            <option value="fibsry.fi">fibsry.fi</option>
+            <option value="finlex.fi">finlex.fi</option>
+            <option value="finna.fi">finna.fi</option>
+            <option value="finntest.fi">finntest.fi</option>
+            <option value="freepik.com">freepik.com</option>
+            <option value="freespee.com">freespee.com</option>
+            <option value="gcfinland.fi">gcfinland.fi</option>
+            <option value="ghgprotocol.org">ghgprotocol.org</option>
+            <option value="google.com">google.com</option>
+            <option value="granlundmanager.fi">granlundmanager.fi</option>
+            <option value="hankintailmoitukset.fi">hankintailmoitukset.fi</option>
+            <option value="heili.fi">heili.fi</option>
+            <option value="helen.fi">helen.fi</option>
+            <option value="hiilineutraalipohjoissavo.fi">hiilineutraalipohjoissavo.fi</option>
+            <option value="hotjar.com">hotjar.com</option>
+            <option value="howspace.com">howspace.com</option>
+            <option value="hybrix.fi">hybrix.fi</option>
+            <option value="ibu-epd.com">ibu-epd.com</option>
+            <option value="iea.org">iea.org</option>
+            <option value="innoflame.fi">innoflame.fi</option>
+            <option value="instagram.com">instagram.com</option>
+            <option value="invest-alliance.eu">invest-alliance.eu</option>
+            <option value="invest4excellence.eu">invest4excellence.eu</option>
+            <option value="irena.org">irena.org</option>
+            <option value="issuu.com">issuu.com</option>
+            <option value="istekki.fi-0.11_6202">istekki.fi-0.11_6202</option>
+            <option value="ists.fi">ists.fi</option>
+            <option value="itk-konferenssi.fi">itk-konferenssi.fi</option>
+            <option value="joas.fi">joas.fi</option>
+            <option value="joensuu.fi">joensuu.fi</option>
+            <option value="joensuues.fi">joensuues.fi</option>
+            <option value="joensuunelli.fi">joensuunelli.fi</option>
+            <option value="joensuunkodit.fi">joensuunkodit.fi</option>
+            <option value="journal.fi">journal.fi</option>
+            <option value="julkari.fi">julkari.fi</option>
+            <option value="karelia.fi-0.44_8542">karelia.fi-0.44_8542</option>
+            <option value="karvi.fi">karvi.fi</option>
+            <option value="kaypahoito.fi">kaypahoito.fi</option>
+            <option value="kela.fi">kela.fi</option>
+            <option value="kennelliitto.fi">kennelliitto.fi</option>
+            <option value="kieliverkosto.fi">kieliverkosto.fi</option>
+            <option value="kiertotaloussuomi.fi">kiertotaloussuomi.fi</option>
+            <option value="kiwa.com">kiwa.com</option>
+            <option value="kiwi.fi">kiwi.fi</option>
+            <option value="kkv.fi">kkv.fi</option>
+            <option value="kokonaisturvallisuudenosaamiskeskus.fi">kokonaisturvallisuudenosaamiskeskus.fi</option>
+            <option value="kuluttajariita.fi">kuluttajariita.fi</option>
+            <option value="kuntarekry.fi">kuntarekry.fi</option>
+            <option value="kuopio.fi">kuopio.fi</option>
+            <option value="kuopionalueenurheiluakatemia.fi">kuopionalueenurheiluakatemia.fi</option>
+            <option value="kustos.fi">kustos.fi</option>
+            <option value="laari.info">laari.info</option>
+            <option value="landbot.io">landbot.io</option>
+            <option value="lenels2.com">lenels2.com</option>
+            <option value="lianapress.se">lianapress.se</option>
+            <option value="linkedin.com">linkedin.com</option>
+            <option value="luja.fi">luja.fi</option>
+            <option value="lujabetong.se">lujabetong.se</option>
+            <option value="lujabetoni.fi">lujabetoni.fi</option>
+            <option value="lujakoti.fi">lujakoti.fi</option>
+            <option value="lujatalo.fi-0.13_4120">lujatalo.fi-0.13_4120</option>
+            <option value="luomuravintola.fi">luomuravintola.fi</option>
+            <option value="mail-eur.net">mail-eur.net</option>
+            <option value="matterport.com">matterport.com</option>
+            <option value="mdpi.com">mdpi.com</option>
+            <option value="meitadev.fi">meitadev.fi</option>
+            <option value="meltwater.io">meltwater.io</option>
+            <option value="metsakeskus.fi">metsakeskus.fi</option>
+            <option value="microsoft.com">microsoft.com</option>
+            <option value="mieli.fi">mieli.fi</option>
+            <option value="mitpressjournals.org">mitpressjournals.org</option>
+            <option value="motonet.ee">motonet.ee</option>
+            <option value="motonet.fi">motonet.fi</option>
+            <option value="motonet.se">motonet.se</option>
+            <option value="mutkary.fi">mutkary.fi</option>
+            <option value="ncp.fi">ncp.fi</option>
+            <option value="office.com">office.com</option>
+            <option value="oikeus.fi">oikeus.fi</option>
+            <option value="oikeusrekisterikeskus.fi">oikeusrekisterikeskus.fi</option>
+            <option value="oikotie.fi">oikotie.fi</option>
+            <option value="oivahymy.fi">oivahymy.fi</option>
+            <option value="okm.fi">okm.fi</option>
+            <option value="onetrust.com">onetrust.com</option>
+            <option value="openingsstudio.com">openingsstudio.com</option>
+            <option value="oph.fi">oph.fi</option>
+            <option value="opin.fi">opin.fi</option>
+            <option value="opintopolku.fi">opintopolku.fi</option>
+            <option value="ovv.com">ovv.com</option>
+            <option value="parkman.io">parkman.io</option>
+            <option value="paviljonki.fi">paviljonki.fi</option>
+            <option value="pellervo.fi">pellervo.fi</option>
+            <option value="playable.com">playable.com</option>
+            <option value="pokapoka.fi">pokapoka.fi</option>
+            <option value="powerbi.com">powerbi.com</option>
+            <option value="prezi.com">prezi.com</option>
+            <option value="professio.fi">professio.fi</option>
+            <option value="proquest.com">proquest.com</option>
+            <option value="pshyvinvointialue.fi">pshyvinvointialue.fi</option>
+            <option value="re3data.org">re3data.org</option>
+            <option value="readspeaker.com">readspeaker.com</option>
+            <option value="rekrytointi.com">rekrytointi.com</option>
+            <option value="saavutettavuusvaatimukset.fi">saavutettavuusvaatimukset.fi</option>
+            <option value="safety.google">safety.google</option>
+            <option value="savilahti.com">savilahti.com</option>
+            <option value="savonia.eu">savonia.eu</option>
+            <option value="savonia.fi-0.28_8542">savonia.fi-0.28_8542</option>
+            <option value="se.com">se.com</option>
+            <option value="seamk.fi">seamk.fi</option>
+            <option value="seravo.com">seravo.com</option>
+            <option value="servica.fi-0.1_8299">servica.fi-0.1_8299</option>
+            <option value="service-now.com">service-now.com</option>
+            <option value="sharepoint.com">sharepoint.com</option>
+            <option value="slotti.fi">slotti.fi</option>
+            <option value="snap.com">snap.com</option>
+            <option value="solenovo.fi">solenovo.fi</option>
+            <option value="soundcloud.com">soundcloud.com</option>
+            <option value="sportedu.fi">sportedu.fi</option>
+            <option value="spotify.com">spotify.com</option>
+            <option value="ssrn.com">ssrn.com</option>
+            <option value="sst.fi">sst.fi</option>
+            <option value="stripe.com">stripe.com</option>
+            <option value="successfactors.eu">successfactors.eu</option>
+            <option value="suomalainentyo.fi">suomalainentyo.fi</option>
+            <option value="taituri.fi">taituri.fi</option>
+            <option value="talentadore.com">talentadore.com</option>
+            <option value="taloustutkimus.fi">taloustutkimus.fi</option>
+            <option value="te-live.fi">te-live.fi</option>
+            <option value="tem.fi">tem.fi</option>
+            <option value="tenk.fi">tenk.fi</option>
+            <option value="themesta.net">themesta.net</option>
+            <option value="theseus.fi">theseus.fi</option>
+            <option value="thinglink.com">thinglink.com</option>
+            <option value="thl.fi">thl.fi</option>
+            <option value="tiedejatutkimus.fi">tiedejatutkimus.fi</option>
+            <option value="tietosuoja.fi">tietosuoja.fi</option>
+            <option value="tietosuojakouluttaja.fi">tietosuojakouluttaja.fi</option>
+            <option value="tiktok.com">tiktok.com</option>
+            <option value="tlabwest.se">tlabwest.se</option>
+            <option value="tuni.fi">tuni.fi</option>
+            <option value="turkuamk.fi">turkuamk.fi</option>
+            <option value="tyomarkkinatori.fi">tyomarkkinatori.fi</option>
+            <option value="uasjournal.fi">uasjournal.fi</option>
+            <option value="ucalc.pro">ucalc.pro</option>
+            <option value="unesco.org">unesco.org</option>
+            <option value="urn.fi">urn.fi</option>
+            <option value="valteri.fi">valteri.fi</option>
+            <option value="valtioneuvosto.fi">valtioneuvosto.fi</option>
+            <option value="valtori.fi">valtori.fi</option>
+            <option value="vanderbiltindustries.com">vanderbiltindustries.com</option>
+            <option value="varaosamaailma.fi">varaosamaailma.fi</option>
+            <option value="vastapaino.fi">vastapaino.fi</option>
+            <option value="vastuullinentiede.fi">vastuullinentiede.fi</option>
+            <option value="vaylaopinnot.fi">vaylaopinnot.fi</option>
+            <option value="verkkolaskuosoite.fi">verkkolaskuosoite.fi</option>
+            <option value="videobot.com">videobot.com</option>
+            <option value="vihta.com">vihta.com</option>
+            <option value="vimeo.com">vimeo.com</option>
+            <option value="vipunen.fi">vipunen.fi</option>
+            <option value="vk-kustannus.fi">vk-kustannus.fi</option>
+            <option value="vuokraovi.com">vuokraovi.com</option>
+            <option value="webropol.com">webropol.com</option>
+            <option value="webropolsurveys.com">webropolsurveys.com</option>
+            <option value="whatsapp.com">whatsapp.com</option>
+            <option value="whistleb.com">whistleb.com</option>
+            <option value="wordpress.org">wordpress.org</option>
+            <option value="xn--sykett-gua.fi">xn--sykett-gua.fi</option>
+            <option value="yale.fi">yale.fi</option>
+            <option value="yalehome.com">yalehome.com</option>
+            <option value="yandex.com">yandex.com</option>
+            <option value="yima40.com">yima40.com</option>
+            <option value="ym.fi">ym.fi</option>
+            <option value="youtu.be">youtu.be</option>
+            <option value="youtube.com">youtube.com</option>
+            <option value="yths.fi">yths.fi</option>
+            <option value="zenodo.org">zenodo.org</option>
+            <option value="zoom.us">zoom.us</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Edge Width (1-1)</label>
+                <div class="size-inputs">
+                    <input type="number" id="width-min" value="0" placeholder="min" min="0" oninput="updateNodes()">
+                    <input type="number" id="width-max" placeholder="Max" min="0" oninput="updateNodes()">
+                </div>
+            </div>
+            <div class="filter-group">
+                <label>Edge Color</label>
+                <select id="edge-color-select" multiple onchange="updateNodes()">
+                    <option value="all" selected>All</option>
+                                <option value="gray">gray</option>
+                </select>
+            </div>
+        </div>
+        <div class="legend" onclick="togglePanel('physics-config')">Physics</div>
+        <div id="physics-config" class="panel-hidden"></div>
+    </div>
+    <div id="description-container">
+        <div id="node-edge-count" class="legend">
+            Nodes: <span id="node-count">0</span>, Edges: <span id="edge-count">0</span>
+        </div>
+        <div class="legend" onclick="togglePanel('description-table')">Diagram Description</div>
+        <div id="description-table" class="panel-hidden">
+            <p>Introduce your network</p>
+            <div class="table-group">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    <tr><td>Nodes amount</td><td>231</td></tr><tr><td>Edges amount</td><td>282</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div id="save-button-container">
+        <button id="save-selection" onclick="saveSelection()">Save Selection</button>
+    </div>
+    
+    <script type="text/javascript">
+        var isDragging = false;
+        var currentX;
+        var currentY;
+        var initialX;
+        var initialY;
+        var titleElement = document.getElementById('diagram-title');
+
+        function startDragging(e) {
+            initialX = e.clientX - currentX;
+            initialY = e.clientY - currentY;
+            isDragging = true;
+            titleElement.style.cursor = 'grabbing';
+        }
+
+        function stopDragging() {
+            isDragging = false;
+            titleElement.style.cursor = 'move';
+        }
+
+        function dragTitle(e) {
+            if (isDragging) {
+                e.preventDefault();
+                currentX = e.clientX - initialX;
+                currentY = e.clientY - initialY;
+                titleElement.style.left = currentX + 'px';
+                titleElement.style.top = currentY + 'px';
+            }
+        }
+
+        if (titleElement) {
+            currentX = parseInt(window.getComputedStyle(titleElement).left) || 50;
+            currentY = parseInt(window.getComputedStyle(titleElement).top) || 10;
+            titleElement.addEventListener('mousedown', startDragging);
+            document.addEventListener('mousemove', dragTitle);
+            document.addEventListener('mouseup', stopDragging);
+            titleElement.style.userSelect = 'none';
+        }
+    </script>
+    
+    
+    <script type="text/javascript">
+    var allNodes = [{"id": "karelia.fi", "label": "karelia.fi", "size": 22.0, "color": {"background": "green", "border": "gray"}, "title": "karelia.fi-0.44_8542", "shape": "dot", "shape_label": "dot"}, {"id": "savonia.fi", "label": "savonia.fi", "size": 14.000000000000002, "color": {"background": "red", "border": "gray"}, "title": "savonia.fi-0.28_8542", "shape": "dot", "shape_label": "dot"}, {"id": "lujatalo.fi", "label": "lujatalo.fi", "size": 6.5, "color": {"background": "red", "border": "gray"}, "title": "lujatalo.fi-0.13_4120", "shape": "dot", "shape_label": "dot"}, {"id": "abloy.fi", "label": "abloy.fi", "size": 5.5, "color": {"background": "green", "border": "gray"}, "title": "abloy.fi-0.11_2572", "shape": "dot", "shape_label": "dot"}, {"id": "istekki.fi", "label": "istekki.fi", "size": 5.5, "color": {"background": "red", "border": "gray"}, "title": "istekki.fi-0.11_6202", "shape": "dot", "shape_label": "dot"}, {"id": "servica.fi", "label": "servica.fi", "size": 5.0, "color": {"background": "red", "border": "gray"}, "title": "servica.fi-0.1_8299", "shape": "dot", "shape_label": "dot"}, {"id": "bromangroup.fi", "label": "bromangroup.fi", "size": 3.0, "color": {"background": "green", "border": "gray"}, "title": "bromangroup.fi-0.06_4532", "shape": "dot", "shape_label": "dot"}, {"id": "kiwi.fi", "label": "kiwi.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "kiwi.fi", "shape": "dot", "shape_label": "dot"}, {"id": "invest-alliance.eu", "label": "invest-alliance.eu", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "invest-alliance.eu", "shape": "dot", "shape_label": "dot"}, {"id": "joas.fi", "label": "joas.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "joas.fi", "shape": "dot", "shape_label": "dot"}, {"id": "e-exam.fi", "label": "e-exam.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "e-exam.fi", "shape": "dot", "shape_label": "dot"}, {"id": "webropol.com", "label": "webropol.com", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "webropol.com", "shape": "dot", "shape_label": "dot"}, {"id": "autismiliitto.fi", "label": "autismiliitto.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "autismiliitto.fi", "shape": "dot", "shape_label": "dot"}, {"id": "elamassa.fi", "label": "elamassa.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "elamassa.fi", "shape": "dot", "shape_label": "dot"}, {"id": "eduuni.fi", "label": "eduuni.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "eduuni.fi", "shape": "dot", "shape_label": "dot"}, {"id": "vaylaopinnot.fi", "label": "vaylaopinnot.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "vaylaopinnot.fi", "shape": "dot", "shape_label": "dot"}, {"id": "joensuu.fi", "label": "joensuu.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "joensuu.fi", "shape": "dot", "shape_label": "dot"}, {"id": "verkkolaskuosoite.fi", "label": "verkkolaskuosoite.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "verkkolaskuosoite.fi", "shape": "dot", "shape_label": "dot"}, {"id": "mail-eur.net", "label": "mail-eur.net", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "mail-eur.net", "shape": "dot", "shape_label": "dot"}, {"id": "meitadev.fi", "label": "meitadev.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "meitadev.fi", "shape": "dot", "shape_label": "dot"}, {"id": "parkman.io", "label": "parkman.io", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "parkman.io", "shape": "dot", "shape_label": "dot"}, {"id": "vk-kustannus.fi", "label": "vk-kustannus.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "vk-kustannus.fi", "shape": "dot", "shape_label": "dot"}, {"id": "chatgpt.com", "label": "chatgpt.com", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "chatgpt.com", "shape": "dot", "shape_label": "dot"}, {"id": "invest4excellence.eu", "label": "invest4excellence.eu", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "invest4excellence.eu", "shape": "dot", "shape_label": "dot"}, {"id": "compass-group.fi", "label": "compass-group.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "compass-group.fi", "shape": "dot", "shape_label": "dot"}, {"id": "joensuunkodit.fi", "label": "joensuunkodit.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "joensuunkodit.fi", "shape": "dot", "shape_label": "dot"}, {"id": "kuntarekry.fi", "label": "kuntarekry.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "kuntarekry.fi", "shape": "dot", "shape_label": "dot"}, {"id": "urn.fi", "label": "urn.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "urn.fi", "shape": "dot", "shape_label": "dot"}, {"id": "unesco.org", "label": "unesco.org", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "unesco.org", "shape": "dot", "shape_label": "dot"}, {"id": "Kielibuusti.fi", "label": "Kielibuusti.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "Kielibuusti.fi", "shape": "dot", "shape_label": "dot"}, {"id": "okm.fi", "label": "okm.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "okm.fi", "shape": "dot", "shape_label": "dot"}, {"id": "creativecommons.fi", "label": "creativecommons.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "creativecommons.fi", "shape": "dot", "shape_label": "dot"}, {"id": "tiedejatutkimus.fi", "label": "tiedejatutkimus.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "tiedejatutkimus.fi", "shape": "dot", "shape_label": "dot"}, {"id": "pellervo.fi", "label": "pellervo.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "pellervo.fi", "shape": "dot", "shape_label": "dot"}, {"id": "mitpressjournals.org", "label": "mitpressjournals.org", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "mitpressjournals.org", "shape": "dot", "shape_label": "dot"}, {"id": "vuokraovi.com", "label": "vuokraovi.com", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "vuokraovi.com", "shape": "dot", "shape_label": "dot"}, {"id": "pokapoka.fi", "label": "pokapoka.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "pokapoka.fi", "shape": "dot", "shape_label": "dot"}, {"id": "kennelliitto.fi", "label": "kennelliitto.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "kennelliitto.fi", "shape": "dot", "shape_label": "dot"}, {"id": "sportedu.fi", "label": "sportedu.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "sportedu.fi", "shape": "dot", "shape_label": "dot"}, {"id": "freepik.com", "label": "freepik.com", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "freepik.com", "shape": "dot", "shape_label": "dot"}, {"id": "zoom.us", "label": "zoom.us", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "zoom.us", "shape": "dot", "shape_label": "dot"}, {"id": "oikeus.fi", "label": "oikeus.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "oikeus.fi", "shape": "dot", "shape_label": "dot"}, {"id": "solenovo.fi", "label": "solenovo.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "solenovo.fi", "shape": "dot", "shape_label": "dot"}, {"id": "finna.fi", "label": "finna.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "finna.fi", "shape": "dot", "shape_label": "dot"}, {"id": "iea.org", "label": "iea.org", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "iea.org", "shape": "dot", "shape_label": "dot"}, {"id": "euspen.eu", "label": "euspen.eu", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "euspen.eu", "shape": "dot", "shape_label": "dot"}, {"id": "vastuullinentiede.fi", "label": "vastuullinentiede.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "vastuullinentiede.fi", "shape": "dot", "shape_label": "dot"}, {"id": "mieli.fi", "label": "mieli.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "mieli.fi", "shape": "dot", "shape_label": "dot"}, {"id": "fairdata.fi", "label": "fairdata.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "fairdata.fi", "shape": "dot", "shape_label": "dot"}, {"id": "cookiedatabase.org", "label": "cookiedatabase.org", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "cookiedatabase.org", "shape": "dot", "shape_label": "dot"}, {"id": "avara.fi", "label": "avara.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "avara.fi", "shape": "dot", "shape_label": "dot"}, {"id": "taituri.fi", "label": "taituri.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "taituri.fi", "shape": "dot", "shape_label": "dot"}, {"id": "valteri.fi", "label": "valteri.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "valteri.fi", "shape": "dot", "shape_label": "dot"}, {"id": "heili.fi", "label": "heili.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "heili.fi", "shape": "dot", "shape_label": "dot"}, {"id": "zenodo.org", "label": "zenodo.org", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "zenodo.org", "shape": "dot", "shape_label": "dot"}, {"id": "digivisio2030.fi", "label": "digivisio2030.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "digivisio2030.fi", "shape": "dot", "shape_label": "dot"}, {"id": "businessjoensuu.fi", "label": "businessjoensuu.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "businessjoensuu.fi", "shape": "dot", "shape_label": "dot"}, {"id": "asuntoverkko.com", "label": "asuntoverkko.com", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "asuntoverkko.com", "shape": "dot", "shape_label": "dot"}, {"id": "re3data.org", "label": "re3data.org", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "re3data.org", "shape": "dot", "shape_label": "dot"}, {"id": "seamk.fi", "label": "seamk.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "seamk.fi", "shape": "dot", "shape_label": "dot"}, {"id": "whatsapp.com", "label": "whatsapp.com", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "whatsapp.com", "shape": "dot", "shape_label": "dot"}, {"id": "co2data.fi", "label": "co2data.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "co2data.fi", "shape": "dot", "shape_label": "dot"}, {"id": "dmptuuli.fi", "label": "dmptuuli.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "dmptuuli.fi", "shape": "dot", "shape_label": "dot"}, {"id": "avointiede.fi", "label": "avointiede.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "avointiede.fi", "shape": "dot", "shape_label": "dot"}, {"id": "vastapaino.fi", "label": "vastapaino.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "vastapaino.fi", "shape": "dot", "shape_label": "dot"}, {"id": "te-live.fi", "label": "te-live.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "te-live.fi", "shape": "dot", "shape_label": "dot"}, {"id": "ovv.com", "label": "ovv.com", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "ovv.com", "shape": "dot", "shape_label": "dot"}, {"id": "oikeusrekisterikeskus.fi", "label": "oikeusrekisterikeskus.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "oikeusrekisterikeskus.fi", "shape": "dot", "shape_label": "dot"}, {"id": "xn--sykett-gua.fi", "label": "xn--sykett-gua.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "xn--sykett-gua.fi", "shape": "dot", "shape_label": "dot"}, {"id": "joensuunelli.fi", "label": "joensuunelli.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "joensuunelli.fi", "shape": "dot", "shape_label": "dot"}, {"id": "ncp.fi", "label": "ncp.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "ncp.fi", "shape": "dot", "shape_label": "dot"}, {"id": "joensuues.fi", "label": "joensuues.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "joensuues.fi", "shape": "dot", "shape_label": "dot"}, {"id": "opin.fi", "label": "opin.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "opin.fi", "shape": "dot", "shape_label": "dot"}, {"id": "irena.org", "label": "irena.org", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "irena.org", "shape": "dot", "shape_label": "dot"}, {"id": "karvi.fi", "label": "karvi.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "karvi.fi", "shape": "dot", "shape_label": "dot"}, {"id": "kaypahoito.fi", "label": "kaypahoito.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "kaypahoito.fi", "shape": "dot", "shape_label": "dot"}, {"id": "tenk.fi", "label": "tenk.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "tenk.fi", "shape": "dot", "shape_label": "dot"}, {"id": "tem.fi", "label": "tem.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "tem.fi", "shape": "dot", "shape_label": "dot"}, {"id": "aka.fi", "label": "aka.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "aka.fi", "shape": "dot", "shape_label": "dot"}, {"id": "tuni.fi", "label": "tuni.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "tuni.fi", "shape": "dot", "shape_label": "dot"}, {"id": "degruyterbrill.com", "label": "degruyterbrill.com", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "degruyterbrill.com", "shape": "dot", "shape_label": "dot"}, {"id": "gcfinland.fi", "label": "gcfinland.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "gcfinland.fi", "shape": "dot", "shape_label": "dot"}, {"id": "howspace.com", "label": "howspace.com", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "howspace.com", "shape": "dot", "shape_label": "dot"}, {"id": "tiktok.com", "label": "tiktok.com", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "tiktok.com", "shape": "dot", "shape_label": "dot"}, {"id": "youtube.com", "label": "youtube.com", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "youtube.com", "shape": "dot", "shape_label": "dot"}, {"id": "tyomarkkinatori.fi", "label": "tyomarkkinatori.fi", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "tyomarkkinatori.fi", "shape": "dot", "shape_label": "dot"}, {"id": "saavutettavuusvaatimukset.fi", "label": "saavutettavuusvaatimukset.fi", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "saavutettavuusvaatimukset.fi", "shape": "dot", "shape_label": "dot"}, {"id": "yths.fi", "label": "yths.fi", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "yths.fi", "shape": "dot", "shape_label": "dot"}, {"id": "uasjournal.fi", "label": "uasjournal.fi", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "uasjournal.fi", "shape": "dot", "shape_label": "dot"}, {"id": "doi.org", "label": "doi.org", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "doi.org", "shape": "dot", "shape_label": "dot"}, {"id": "creativecommons.org", "label": "creativecommons.org", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "creativecommons.org", "shape": "dot", "shape_label": "dot"}, {"id": "edition.fi", "label": "edition.fi", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "edition.fi", "shape": "dot", "shape_label": "dot"}, {"id": "eduplan.fi", "label": "eduplan.fi", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "eduplan.fi", "shape": "dot", "shape_label": "dot"}, {"id": "thinglink.com", "label": "thinglink.com", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "thinglink.com", "shape": "dot", "shape_label": "dot"}, {"id": "sharepoint.com", "label": "sharepoint.com", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "sharepoint.com", "shape": "dot", "shape_label": "dot"}, {"id": "draftprogram.com", "label": "draftprogram.com", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "draftprogram.com", "shape": "dot", "shape_label": "dot"}, {"id": "theseus.fi", "label": "theseus.fi", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "theseus.fi", "shape": "dot", "shape_label": "dot"}, {"id": "issuu.com", "label": "issuu.com", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "issuu.com", "shape": "dot", "shape_label": "dot"}, {"id": "aoe.fi", "label": "aoe.fi", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "aoe.fi", "shape": "dot", "shape_label": "dot"}, {"id": "ammattikorkeakouluun.fi", "label": "ammattikorkeakouluun.fi", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "ammattikorkeakouluun.fi", "shape": "dot", "shape_label": "dot"}, {"id": "kela.fi", "label": "kela.fi", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "kela.fi", "shape": "dot", "shape_label": "dot"}, {"id": "webropolsurveys.com", "label": "webropolsurveys.com", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "webropolsurveys.com", "shape": "dot", "shape_label": "dot"}, {"id": "opintopolku.fi", "label": "opintopolku.fi", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "opintopolku.fi", "shape": "dot", "shape_label": "dot"}, {"id": "cookiebot.com", "label": "cookiebot.com", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "cookiebot.com", "shape": "dot", "shape_label": "dot"}, {"id": "adobe.com", "label": "adobe.com", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "adobe.com", "shape": "dot", "shape_label": "dot"}, {"id": "snap.com", "label": "snap.com", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "snap.com", "shape": "dot", "shape_label": "dot"}, {"id": "kuopionalueenurheiluakatemia.fi", "label": "kuopionalueenurheiluakatemia.fi", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "kuopionalueenurheiluakatemia.fi", "shape": "dot", "shape_label": "dot"}, {"id": "eu4dual.education", "label": "eu4dual.education", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "eu4dual.education", "shape": "dot", "shape_label": "dot"}, {"id": "cloudflare.com", "label": "cloudflare.com", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "cloudflare.com", "shape": "dot", "shape_label": "dot"}, {"id": "proquest.com", "label": "proquest.com", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "proquest.com", "shape": "dot", "shape_label": "dot"}, {"id": "oph.fi", "label": "oph.fi", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "oph.fi", "shape": "dot", "shape_label": "dot"}, {"id": "vimeo.com", "label": "vimeo.com", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "vimeo.com", "shape": "dot", "shape_label": "dot"}, {"id": "julkari.fi", "label": "julkari.fi", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "julkari.fi", "shape": "dot", "shape_label": "dot"}, {"id": "powerbi.com", "label": "powerbi.com", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "powerbi.com", "shape": "dot", "shape_label": "dot"}, {"id": "finlex.fi", "label": "finlex.fi", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "finlex.fi", "shape": "dot", "shape_label": "dot"}, {"id": "mdpi.com", "label": "mdpi.com", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "mdpi.com", "shape": "dot", "shape_label": "dot"}, {"id": "metsakeskus.fi", "label": "metsakeskus.fi", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "metsakeskus.fi", "shape": "dot", "shape_label": "dot"}, {"id": "readspeaker.com", "label": "readspeaker.com", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "readspeaker.com", "shape": "dot", "shape_label": "dot"}, {"id": "stripe.com", "label": "stripe.com", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "stripe.com", "shape": "dot", "shape_label": "dot"}, {"id": "turkuamk.fi", "label": "turkuamk.fi", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "turkuamk.fi", "shape": "dot", "shape_label": "dot"}, {"id": "mutkary.fi", "label": "mutkary.fi", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "mutkary.fi", "shape": "dot", "shape_label": "dot"}, {"id": "slotti.fi", "label": "slotti.fi", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "slotti.fi", "shape": "dot", "shape_label": "dot"}, {"id": "journal.fi", "label": "journal.fi", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "journal.fi", "shape": "dot", "shape_label": "dot"}, {"id": "bcpohjois-savo.fi", "label": "bcpohjois-savo.fi", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "bcpohjois-savo.fi", "shape": "dot", "shape_label": "dot"}, {"id": "ssrn.com", "label": "ssrn.com", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "ssrn.com", "shape": "dot", "shape_label": "dot"}, {"id": "thl.fi", "label": "thl.fi", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "thl.fi", "shape": "dot", "shape_label": "dot"}, {"id": "savilahti.com", "label": "savilahti.com", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "savilahti.com", "shape": "dot", "shape_label": "dot"}, {"id": "soundcloud.com", "label": "soundcloud.com", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "soundcloud.com", "shape": "dot", "shape_label": "dot"}, {"id": "savonia.eu", "label": "savonia.eu", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "savonia.eu", "shape": "dot", "shape_label": "dot"}, {"id": "vipunen.fi", "label": "vipunen.fi", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "vipunen.fi", "shape": "dot", "shape_label": "dot"}, {"id": "innoflame.fi", "label": "innoflame.fi", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "innoflame.fi", "shape": "dot", "shape_label": "dot"}, {"id": "pshyvinvointialue.fi", "label": "pshyvinvointialue.fi", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "pshyvinvointialue.fi", "shape": "dot", "shape_label": "dot"}, {"id": "kokonaisturvallisuudenosaamiskeskus.fi", "label": "kokonaisturvallisuudenosaamiskeskus.fi", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "kokonaisturvallisuudenosaamiskeskus.fi", "shape": "dot", "shape_label": "dot"}, {"id": "laari.info", "label": "laari.info", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "laari.info", "shape": "dot", "shape_label": "dot"}, {"id": "kieliverkosto.fi", "label": "kieliverkosto.fi", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "kieliverkosto.fi", "shape": "dot", "shape_label": "dot"}, {"id": "ists.fi", "label": "ists.fi", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "ists.fi", "shape": "dot", "shape_label": "dot"}, {"id": "prezi.com", "label": "prezi.com", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "prezi.com", "shape": "dot", "shape_label": "dot"}, {"id": "valtioneuvosto.fi", "label": "valtioneuvosto.fi", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "valtioneuvosto.fi", "shape": "dot", "shape_label": "dot"}, {"id": "adform.com", "label": "adform.com", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "adform.com", "shape": "dot", "shape_label": "dot"}, {"id": "matterport.com", "label": "matterport.com", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "matterport.com", "shape": "dot", "shape_label": "dot"}, {"id": "youtu.be", "label": "youtu.be", "size": 0.13, "color": {"background": "blue", "border": "gray"}, "title": "youtu.be", "shape": "dot", "shape_label": "dot"}, {"id": "office.com", "label": "office.com", "size": 0.13, "color": {"background": "blue", "border": "gray"}, "title": "office.com", "shape": "dot", "shape_label": "dot"}, {"id": "talentadore.com", "label": "talentadore.com", "size": 0.13, "color": {"background": "blue", "border": "gray"}, "title": "talentadore.com", "shape": "dot", "shape_label": "dot"}, {"id": "google.com", "label": "google.com", "size": 0.13, "color": {"background": "blue", "border": "gray"}, "title": "google.com", "shape": "dot", "shape_label": "dot"}, {"id": "easywhistle.com", "label": "easywhistle.com", "size": 0.13, "color": {"background": "blue", "border": "gray"}, "title": "easywhistle.com", "shape": "dot", "shape_label": "dot"}, {"id": "emmi.fi", "label": "emmi.fi", "size": 0.13, "color": {"background": "blue", "border": "gray"}, "title": "emmi.fi", "shape": "dot", "shape_label": "dot"}, {"id": "aboutcookies.org", "label": "aboutcookies.org", "size": 0.13, "color": {"background": "blue", "border": "gray"}, "title": "aboutcookies.org", "shape": "dot", "shape_label": "dot"}, {"id": "yandex.com", "label": "yandex.com", "size": 0.13, "color": {"background": "blue", "border": "gray"}, "title": "yandex.com", "shape": "dot", "shape_label": "dot"}, {"id": "lujabetong.se", "label": "lujabetong.se", "size": 0.13, "color": {"background": "blue", "border": "gray"}, "title": "lujabetong.se", "shape": "dot", "shape_label": "dot"}, {"id": "luja.fi", "label": "luja.fi", "size": 0.13, "color": {"background": "blue", "border": "gray"}, "title": "luja.fi", "shape": "dot", "shape_label": "dot"}, {"id": "ucalc.pro", "label": "ucalc.pro", "size": 0.13, "color": {"background": "blue", "border": "gray"}, "title": "ucalc.pro", "shape": "dot", "shape_label": "dot"}, {"id": "albacross.com", "label": "albacross.com", "size": 0.13, "color": {"background": "blue", "border": "gray"}, "title": "albacross.com", "shape": "dot", "shape_label": "dot"}, {"id": "freespee.com", "label": "freespee.com", "size": 0.13, "color": {"background": "blue", "border": "gray"}, "title": "freespee.com", "shape": "dot", "shape_label": "dot"}, {"id": "enlapser.cloud", "label": "enlapser.cloud", "size": 0.13, "color": {"background": "blue", "border": "gray"}, "title": "enlapser.cloud", "shape": "dot", "shape_label": "dot"}, {"id": "landbot.io", "label": "landbot.io", "size": 0.13, "color": {"background": "blue", "border": "gray"}, "title": "landbot.io", "shape": "dot", "shape_label": "dot"}, {"id": "themesta.net", "label": "themesta.net", "size": 0.13, "color": {"background": "blue", "border": "gray"}, "title": "themesta.net", "shape": "dot", "shape_label": "dot"}, {"id": "seravo.com", "label": "seravo.com", "size": 0.13, "color": {"background": "blue", "border": "gray"}, "title": "seravo.com", "shape": "dot", "shape_label": "dot"}, {"id": "lujakoti.fi", "label": "lujakoti.fi", "size": 0.13, "color": {"background": "blue", "border": "gray"}, "title": "lujakoti.fi", "shape": "dot", "shape_label": "dot"}, {"id": "hybrix.fi", "label": "hybrix.fi", "size": 0.13, "color": {"background": "blue", "border": "gray"}, "title": "hybrix.fi", "shape": "dot", "shape_label": "dot"}, {"id": "hotjar.com", "label": "hotjar.com", "size": 0.13, "color": {"background": "blue", "border": "gray"}, "title": "hotjar.com", "shape": "dot", "shape_label": "dot"}, {"id": "lujabetoni.fi", "label": "lujabetoni.fi", "size": 0.13, "color": {"background": "blue", "border": "gray"}, "title": "lujabetoni.fi", "shape": "dot", "shape_label": "dot"}, {"id": "amsystem.com", "label": "amsystem.com", "size": 0.11, "color": {"background": "blue", "border": "gray"}, "title": "amsystem.com", "shape": "dot", "shape_label": "dot"}, {"id": "se.com", "label": "se.com", "size": 0.11, "color": {"background": "blue", "border": "gray"}, "title": "se.com", "shape": "dot", "shape_label": "dot"}, {"id": "service-now.com", "label": "service-now.com", "size": 0.11, "color": {"background": "blue", "border": "gray"}, "title": "service-now.com", "shape": "dot", "shape_label": "dot"}, {"id": "tlabwest.se", "label": "tlabwest.se", "size": 0.11, "color": {"background": "blue", "border": "gray"}, "title": "tlabwest.se", "shape": "dot", "shape_label": "dot"}, {"id": "kuluttajariita.fi", "label": "kuluttajariita.fi", "size": 0.11, "color": {"background": "blue", "border": "gray"}, "title": "kuluttajariita.fi", "shape": "dot", "shape_label": "dot"}, {"id": "cpc-germania.com", "label": "cpc-germania.com", "size": 0.11, "color": {"background": "blue", "border": "gray"}, "title": "cpc-germania.com", "shape": "dot", "shape_label": "dot"}, {"id": "playable.com", "label": "playable.com", "size": 0.11, "color": {"background": "blue", "border": "gray"}, "title": "playable.com", "shape": "dot", "shape_label": "dot"}, {"id": "cookiepedia.co.uk", "label": "cookiepedia.co.uk", "size": 0.11, "color": {"background": "blue", "border": "gray"}, "title": "cookiepedia.co.uk", "shape": "dot", "shape_label": "dot"}, {"id": "taloustutkimus.fi", "label": "taloustutkimus.fi", "size": 0.11, "color": {"background": "blue", "border": "gray"}, "title": "taloustutkimus.fi", "shape": "dot", "shape_label": "dot"}, {"id": "yalehome.com", "label": "yalehome.com", "size": 0.11, "color": {"background": "blue", "border": "gray"}, "title": "yalehome.com", "shape": "dot", "shape_label": "dot"}, {"id": "yale.fi", "label": "yale.fi", "size": 0.11, "color": {"background": "blue", "border": "gray"}, "title": "yale.fi", "shape": "dot", "shape_label": "dot"}, {"id": "ibu-epd.com", "label": "ibu-epd.com", "size": 0.11, "color": {"background": "blue", "border": "gray"}, "title": "ibu-epd.com", "shape": "dot", "shape_label": "dot"}, {"id": "successfactors.eu", "label": "successfactors.eu", "size": 0.11, "color": {"background": "blue", "border": "gray"}, "title": "successfactors.eu", "shape": "dot", "shape_label": "dot"}, {"id": "kkv.fi", "label": "kkv.fi", "size": 0.11, "color": {"background": "blue", "border": "gray"}, "title": "kkv.fi", "shape": "dot", "shape_label": "dot"}, {"id": "lenels2.com", "label": "lenels2.com", "size": 0.11, "color": {"background": "blue", "border": "gray"}, "title": "lenels2.com", "shape": "dot", "shape_label": "dot"}, {"id": "helen.fi", "label": "helen.fi", "size": 0.11, "color": {"background": "blue", "border": "gray"}, "title": "helen.fi", "shape": "dot", "shape_label": "dot"}, {"id": "onetrust.com", "label": "onetrust.com", "size": 0.11, "color": {"background": "blue", "border": "gray"}, "title": "onetrust.com", "shape": "dot", "shape_label": "dot"}, {"id": "openingsstudio.com", "label": "openingsstudio.com", "size": 0.11, "color": {"background": "blue", "border": "gray"}, "title": "openingsstudio.com", "shape": "dot", "shape_label": "dot"}, {"id": "vanderbiltindustries.com", "label": "vanderbiltindustries.com", "size": 0.11, "color": {"background": "blue", "border": "gray"}, "title": "vanderbiltindustries.com", "shape": "dot", "shape_label": "dot"}, {"id": "oikotie.fi", "label": "oikotie.fi", "size": 0.11, "color": {"background": "blue", "border": "gray"}, "title": "oikotie.fi", "shape": "dot", "shape_label": "dot"}, {"id": "fcg.fi", "label": "fcg.fi", "size": 0.11, "color": {"background": "blue", "border": "gray"}, "title": "fcg.fi", "shape": "dot", "shape_label": "dot"}, {"id": "vihta.com", "label": "vihta.com", "size": 0.11, "color": {"background": "blue", "border": "gray"}, "title": "vihta.com", "shape": "dot", "shape_label": "dot"}, {"id": "ghgprotocol.org", "label": "ghgprotocol.org", "size": 0.11, "color": {"background": "blue", "border": "gray"}, "title": "ghgprotocol.org", "shape": "dot", "shape_label": "dot"}, {"id": "professio.fi", "label": "professio.fi", "size": 0.11, "color": {"background": "blue", "border": "gray"}, "title": "professio.fi", "shape": "dot", "shape_label": "dot"}, {"id": "spotify.com", "label": "spotify.com", "size": 0.11, "color": {"background": "blue", "border": "gray"}, "title": "spotify.com", "shape": "dot", "shape_label": "dot"}, {"id": "ekokompassi.fi", "label": "ekokompassi.fi", "size": 0.11, "color": {"background": "blue", "border": "gray"}, "title": "ekokompassi.fi", "shape": "dot", "shape_label": "dot"}, {"id": "paviljonki.fi", "label": "paviljonki.fi", "size": 0.11, "color": {"background": "blue", "border": "gray"}, "title": "paviljonki.fi", "shape": "dot", "shape_label": "dot"}, {"id": "valtori.fi", "label": "valtori.fi", "size": 0.11, "color": {"background": "blue", "border": "gray"}, "title": "valtori.fi", "shape": "dot", "shape_label": "dot"}, {"id": "itk-konferenssi.fi", "label": "itk-konferenssi.fi", "size": 0.11, "color": {"background": "blue", "border": "gray"}, "title": "itk-konferenssi.fi", "shape": "dot", "shape_label": "dot"}, {"id": "dvv.fi", "label": "dvv.fi", "size": 0.11, "color": {"background": "blue", "border": "gray"}, "title": "dvv.fi", "shape": "dot", "shape_label": "dot"}, {"id": "videobot.com", "label": "videobot.com", "size": 0.11, "color": {"background": "blue", "border": "gray"}, "title": "videobot.com", "shape": "dot", "shape_label": "dot"}, {"id": "hiilineutraalipohjoissavo.fi", "label": "hiilineutraalipohjoissavo.fi", "size": 0.11, "color": {"background": "blue", "border": "gray"}, "title": "hiilineutraalipohjoissavo.fi", "shape": "dot", "shape_label": "dot"}, {"id": "kustos.fi", "label": "kustos.fi", "size": 0.11, "color": {"background": "blue", "border": "gray"}, "title": "kustos.fi", "shape": "dot", "shape_label": "dot"}, {"id": "cookieyes.com", "label": "cookieyes.com", "size": 0.11, "color": {"background": "blue", "border": "gray"}, "title": "cookieyes.com", "shape": "dot", "shape_label": "dot"}, {"id": "instagram.com", "label": "instagram.com", "size": 0.1, "color": {"background": "blue", "border": "gray"}, "title": "instagram.com", "shape": "dot", "shape_label": "dot"}, {"id": "facebook.com", "label": "facebook.com", "size": 0.1, "color": {"background": "blue", "border": "gray"}, "title": "facebook.com", "shape": "dot", "shape_label": "dot"}, {"id": "linkedin.com", "label": "linkedin.com", "size": 0.1, "color": {"background": "blue", "border": "gray"}, "title": "linkedin.com", "shape": "dot", "shape_label": "dot"}, {"id": "europa.eu", "label": "europa.eu", "size": 0.1, "color": {"background": "blue", "border": "gray"}, "title": "europa.eu", "shape": "dot", "shape_label": "dot"}, {"id": "hankintailmoitukset.fi", "label": "hankintailmoitukset.fi", "size": 0.1, "color": {"background": "blue", "border": "gray"}, "title": "hankintailmoitukset.fi", "shape": "dot", "shape_label": "dot"}, {"id": "whistleb.com", "label": "whistleb.com", "size": 0.1, "color": {"background": "blue", "border": "gray"}, "title": "whistleb.com", "shape": "dot", "shape_label": "dot"}, {"id": "fibsry.fi", "label": "fibsry.fi", "size": 0.1, "color": {"background": "blue", "border": "gray"}, "title": "fibsry.fi", "shape": "dot", "shape_label": "dot"}, {"id": "tietosuoja.fi", "label": "tietosuoja.fi", "size": 0.1, "color": {"background": "blue", "border": "gray"}, "title": "tietosuoja.fi", "shape": "dot", "shape_label": "dot"}, {"id": "microsoft.com", "label": "microsoft.com", "size": 0.1, "color": {"background": "blue", "border": "gray"}, "title": "microsoft.com", "shape": "dot", "shape_label": "dot"}, {"id": "safety.google", "label": "safety.google", "size": 0.1, "color": {"background": "blue", "border": "gray"}, "title": "safety.google", "shape": "dot", "shape_label": "dot"}, {"id": "kuopio.fi", "label": "kuopio.fi", "size": 0.1, "color": {"background": "blue", "border": "gray"}, "title": "kuopio.fi", "shape": "dot", "shape_label": "dot"}, {"id": "ym.fi", "label": "ym.fi", "size": 0.1, "color": {"background": "blue", "border": "gray"}, "title": "ym.fi", "shape": "dot", "shape_label": "dot"}, {"id": "luomuravintola.fi", "label": "luomuravintola.fi", "size": 0.1, "color": {"background": "blue", "border": "gray"}, "title": "luomuravintola.fi", "shape": "dot", "shape_label": "dot"}, {"id": "rekrytointi.com", "label": "rekrytointi.com", "size": 0.1, "color": {"background": "blue", "border": "gray"}, "title": "rekrytointi.com", "shape": "dot", "shape_label": "dot"}, {"id": "yima40.com", "label": "yima40.com", "size": 0.1, "color": {"background": "blue", "border": "gray"}, "title": "yima40.com", "shape": "dot", "shape_label": "dot"}, {"id": "cookiehub.com", "label": "cookiehub.com", "size": 0.1, "color": {"background": "blue", "border": "gray"}, "title": "cookiehub.com", "shape": "dot", "shape_label": "dot"}, {"id": "kiwa.com", "label": "kiwa.com", "size": 0.1, "color": {"background": "blue", "border": "gray"}, "title": "kiwa.com", "shape": "dot", "shape_label": "dot"}, {"id": "suomalainentyo.fi", "label": "suomalainentyo.fi", "size": 0.1, "color": {"background": "blue", "border": "gray"}, "title": "suomalainentyo.fi", "shape": "dot", "shape_label": "dot"}, {"id": "oivahymy.fi", "label": "oivahymy.fi", "size": 0.1, "color": {"background": "blue", "border": "gray"}, "title": "oivahymy.fi", "shape": "dot", "shape_label": "dot"}, {"id": "kiertotaloussuomi.fi", "label": "kiertotaloussuomi.fi", "size": 0.1, "color": {"background": "blue", "border": "gray"}, "title": "kiertotaloussuomi.fi", "shape": "dot", "shape_label": "dot"}, {"id": "tietosuojakouluttaja.fi", "label": "tietosuojakouluttaja.fi", "size": 0.1, "color": {"background": "blue", "border": "gray"}, "title": "tietosuojakouluttaja.fi", "shape": "dot", "shape_label": "dot"}, {"id": "granlundmanager.fi", "label": "granlundmanager.fi", "size": 0.1, "color": {"background": "blue", "border": "gray"}, "title": "granlundmanager.fi", "shape": "dot", "shape_label": "dot"}, {"id": "sst.fi", "label": "sst.fi", "size": 0.1, "color": {"background": "blue", "border": "gray"}, "title": "sst.fi", "shape": "dot", "shape_label": "dot"}, {"id": "lianapress.se", "label": "lianapress.se", "size": 0.06, "color": {"background": "blue", "border": "gray"}, "title": "lianapress.se", "shape": "dot", "shape_label": "dot"}, {"id": "epressi.com", "label": "epressi.com", "size": 0.06, "color": {"background": "blue", "border": "gray"}, "title": "epressi.com", "shape": "dot", "shape_label": "dot"}, {"id": "bromanus.com", "label": "bromanus.com", "size": 0.06, "color": {"background": "blue", "border": "gray"}, "title": "bromanus.com", "shape": "dot", "shape_label": "dot"}, {"id": "bromanlogistics.fi", "label": "bromanlogistics.fi", "size": 0.06, "color": {"background": "blue", "border": "gray"}, "title": "bromanlogistics.fi", "shape": "dot", "shape_label": "dot"}, {"id": "varaosamaailma.fi", "label": "varaosamaailma.fi", "size": 0.06, "color": {"background": "blue", "border": "gray"}, "title": "varaosamaailma.fi", "shape": "dot", "shape_label": "dot"}, {"id": "bromanasia.com", "label": "bromanasia.com", "size": 0.06, "color": {"background": "blue", "border": "gray"}, "title": "bromanasia.com", "shape": "dot", "shape_label": "dot"}, {"id": "wordpress.org", "label": "wordpress.org", "size": 0.06, "color": {"background": "blue", "border": "gray"}, "title": "wordpress.org", "shape": "dot", "shape_label": "dot"}, {"id": "meltwater.io", "label": "meltwater.io", "size": 0.06, "color": {"background": "blue", "border": "gray"}, "title": "meltwater.io", "shape": "dot", "shape_label": "dot"}, {"id": "motonet.ee", "label": "motonet.ee", "size": 0.06, "color": {"background": "blue", "border": "gray"}, "title": "motonet.ee", "shape": "dot", "shape_label": "dot"}, {"id": "autodistribution.international", "label": "autodistribution.international", "size": 0.06, "color": {"background": "blue", "border": "gray"}, "title": "autodistribution.international", "shape": "dot", "shape_label": "dot"}, {"id": "motonet.fi", "label": "motonet.fi", "size": 0.06, "color": {"background": "blue", "border": "gray"}, "title": "motonet.fi", "shape": "dot", "shape_label": "dot"}, {"id": "motonet.se", "label": "motonet.se", "size": 0.06, "color": {"background": "blue", "border": "gray"}, "title": "motonet.se", "shape": "dot", "shape_label": "dot"}, {"id": "finntest.fi", "label": "finntest.fi", "size": 0.06, "color": {"background": "blue", "border": "gray"}, "title": "finntest.fi", "shape": "dot", "shape_label": "dot"}];
+    var allEdges = [{"from": "abloy.fi", "to": "amsystem.com", "width": 1, "color": {"color": "gray"}, "title": "abloy.fi - amsystem.com"}, {"from": "abloy.fi", "to": "se.com", "width": 1, "color": {"color": "gray"}, "title": "abloy.fi - se.com"}, {"from": "abloy.fi", "to": "tiktok.com", "width": 1, "color": {"color": "gray"}, "title": "abloy.fi - tiktok.com"}, {"from": "abloy.fi", "to": "service-now.com", "width": 1, "color": {"color": "gray"}, "title": "abloy.fi - service-now.com"}, {"from": "abloy.fi", "to": "tlabwest.se", "width": 1, "color": {"color": "gray"}, "title": "abloy.fi - tlabwest.se"}, {"from": "abloy.fi", "to": "instagram.com", "width": 1, "color": {"color": "gray"}, "title": "abloy.fi - instagram.com"}, {"from": "abloy.fi", "to": "kuluttajariita.fi", "width": 1, "color": {"color": "gray"}, "title": "abloy.fi - kuluttajariita.fi"}, {"from": "abloy.fi", "to": "cpc-germania.com", "width": 1, "color": {"color": "gray"}, "title": "abloy.fi - cpc-germania.com"}, {"from": "abloy.fi", "to": "playable.com", "width": 1, "color": {"color": "gray"}, "title": "abloy.fi - playable.com"}, {"from": "abloy.fi", "to": "youtu.be", "width": 1, "color": {"color": "gray"}, "title": "abloy.fi - youtu.be"}, {"from": "abloy.fi", "to": "cookiepedia.co.uk", "width": 1, "color": {"color": "gray"}, "title": "abloy.fi - cookiepedia.co.uk"}, {"from": "abloy.fi", "to": "taloustutkimus.fi", "width": 1, "color": {"color": "gray"}, "title": "abloy.fi - taloustutkimus.fi"}, {"from": "abloy.fi", "to": "yalehome.com", "width": 1, "color": {"color": "gray"}, "title": "abloy.fi - yalehome.com"}, {"from": "abloy.fi", "to": "yale.fi", "width": 1, "color": {"color": "gray"}, "title": "abloy.fi - yale.fi"}, {"from": "abloy.fi", "to": "ibu-epd.com", "width": 1, "color": {"color": "gray"}, "title": "abloy.fi - ibu-epd.com"}, {"from": "abloy.fi", "to": "successfactors.eu", "width": 1, "color": {"color": "gray"}, "title": "abloy.fi - successfactors.eu"}, {"from": "abloy.fi", "to": "kkv.fi", "width": 1, "color": {"color": "gray"}, "title": "abloy.fi - kkv.fi"}, {"from": "abloy.fi", "to": "facebook.com", "width": 1, "color": {"color": "gray"}, "title": "abloy.fi - facebook.com"}, {"from": "abloy.fi", "to": "lenels2.com", "width": 1, "color": {"color": "gray"}, "title": "abloy.fi - lenels2.com"}, {"from": "abloy.fi", "to": "helen.fi", "width": 1, "color": {"color": "gray"}, "title": "abloy.fi - helen.fi"}, {"from": "abloy.fi", "to": "onetrust.com", "width": 1, "color": {"color": "gray"}, "title": "abloy.fi - onetrust.com"}, {"from": "abloy.fi", "to": "openingsstudio.com", "width": 1, "color": {"color": "gray"}, "title": "abloy.fi - openingsstudio.com"}, {"from": "abloy.fi", "to": "linkedin.com", "width": 1, "color": {"color": "gray"}, "title": "abloy.fi - linkedin.com"}, {"from": "abloy.fi", "to": "vanderbiltindustries.com", "width": 1, "color": {"color": "gray"}, "title": "abloy.fi - vanderbiltindustries.com"}, {"from": "abloy.fi", "to": "youtube.com", "width": 1, "color": {"color": "gray"}, "title": "abloy.fi - youtube.com"}, {"from": "abloy.fi", "to": "europa.eu", "width": 1, "color": {"color": "gray"}, "title": "abloy.fi - europa.eu"}, {"from": "bromangroup.fi", "to": "lianapress.se", "width": 1, "color": {"color": "gray"}, "title": "bromangroup.fi - lianapress.se"}, {"from": "bromangroup.fi", "to": "epressi.com", "width": 1, "color": {"color": "gray"}, "title": "bromangroup.fi - epressi.com"}, {"from": "bromangroup.fi", "to": "bromanus.com", "width": 1, "color": {"color": "gray"}, "title": "bromangroup.fi - bromanus.com"}, {"from": "bromangroup.fi", "to": "bromanlogistics.fi", "width": 1, "color": {"color": "gray"}, "title": "bromangroup.fi - bromanlogistics.fi"}, {"from": "bromangroup.fi", "to": "varaosamaailma.fi", "width": 1, "color": {"color": "gray"}, "title": "bromangroup.fi - varaosamaailma.fi"}, {"from": "bromangroup.fi", "to": "bromanasia.com", "width": 1, "color": {"color": "gray"}, "title": "bromangroup.fi - bromanasia.com"}, {"from": "bromangroup.fi", "to": "wordpress.org", "width": 1, "color": {"color": "gray"}, "title": "bromangroup.fi - wordpress.org"}, {"from": "bromangroup.fi", "to": "meltwater.io", "width": 1, "color": {"color": "gray"}, "title": "bromangroup.fi - meltwater.io"}, {"from": "bromangroup.fi", "to": "motonet.ee", "width": 1, "color": {"color": "gray"}, "title": "bromangroup.fi - motonet.ee"}, {"from": "bromangroup.fi", "to": "autodistribution.international", "width": 1, "color": {"color": "gray"}, "title": "bromangroup.fi - autodistribution.international"}, {"from": "bromangroup.fi", "to": "motonet.fi", "width": 1, "color": {"color": "gray"}, "title": "bromangroup.fi - motonet.fi"}, {"from": "bromangroup.fi", "to": "motonet.se", "width": 1, "color": {"color": "gray"}, "title": "bromangroup.fi - motonet.se"}, {"from": "bromangroup.fi", "to": "finntest.fi", "width": 1, "color": {"color": "gray"}, "title": "bromangroup.fi - finntest.fi"}, {"from": "istekki.fi", "to": "oikotie.fi", "width": 1, "color": {"color": "gray"}, "title": "istekki.fi - oikotie.fi"}, {"from": "istekki.fi", "to": "fcg.fi", "width": 1, "color": {"color": "gray"}, "title": "istekki.fi - fcg.fi"}, {"from": "istekki.fi", "to": "office.com", "width": 1, "color": {"color": "gray"}, "title": "istekki.fi - office.com"}, {"from": "istekki.fi", "to": "vihta.com", "width": 1, "color": {"color": "gray"}, "title": "istekki.fi - vihta.com"}, {"from": "istekki.fi", "to": "instagram.com", "width": 1, "color": {"color": "gray"}, "title": "istekki.fi - instagram.com"}, {"from": "istekki.fi", "to": "ghgprotocol.org", "width": 1, "color": {"color": "gray"}, "title": "istekki.fi - ghgprotocol.org"}, {"from": "istekki.fi", "to": "tyomarkkinatori.fi", "width": 1, "color": {"color": "gray"}, "title": "istekki.fi - tyomarkkinatori.fi"}, {"from": "istekki.fi", "to": "professio.fi", "width": 1, "color": {"color": "gray"}, "title": "istekki.fi - professio.fi"}, {"from": "istekki.fi", "to": "talentadore.com", "width": 1, "color": {"color": "gray"}, "title": "istekki.fi - talentadore.com"}, {"from": "istekki.fi", "to": "spotify.com", "width": 1, "color": {"color": "gray"}, "title": "istekki.fi - spotify.com"}, {"from": "istekki.fi", "to": "hankintailmoitukset.fi", "width": 1, "color": {"color": "gray"}, "title": "istekki.fi - hankintailmoitukset.fi"}, {"from": "istekki.fi", "to": "ekokompassi.fi", "width": 1, "color": {"color": "gray"}, "title": "istekki.fi - ekokompassi.fi"}, {"from": "istekki.fi", "to": "paviljonki.fi", "width": 1, "color": {"color": "gray"}, "title": "istekki.fi - paviljonki.fi"}, {"from": "istekki.fi", "to": "valtori.fi", "width": 1, "color": {"color": "gray"}, "title": "istekki.fi - valtori.fi"}, {"from": "istekki.fi", "to": "itk-konferenssi.fi", "width": 1, "color": {"color": "gray"}, "title": "istekki.fi - itk-konferenssi.fi"}, {"from": "istekki.fi", "to": "dvv.fi", "width": 1, "color": {"color": "gray"}, "title": "istekki.fi - dvv.fi"}, {"from": "istekki.fi", "to": "videobot.com", "width": 1, "color": {"color": "gray"}, "title": "istekki.fi - videobot.com"}, {"from": "istekki.fi", "to": "whistleb.com", "width": 1, "color": {"color": "gray"}, "title": "istekki.fi - whistleb.com"}, {"from": "istekki.fi", "to": "facebook.com", "width": 1, "color": {"color": "gray"}, "title": "istekki.fi - facebook.com"}, {"from": "istekki.fi", "to": "saavutettavuusvaatimukset.fi", "width": 1, "color": {"color": "gray"}, "title": "istekki.fi - saavutettavuusvaatimukset.fi"}, {"from": "istekki.fi", "to": "fibsry.fi", "width": 1, "color": {"color": "gray"}, "title": "istekki.fi - fibsry.fi"}, {"from": "istekki.fi", "to": "hiilineutraalipohjoissavo.fi", "width": 1, "color": {"color": "gray"}, "title": "istekki.fi - hiilineutraalipohjoissavo.fi"}, {"from": "istekki.fi", "to": "linkedin.com", "width": 1, "color": {"color": "gray"}, "title": "istekki.fi - linkedin.com"}, {"from": "istekki.fi", "to": "kustos.fi", "width": 1, "color": {"color": "gray"}, "title": "istekki.fi - kustos.fi"}, {"from": "istekki.fi", "to": "youtube.com", "width": 1, "color": {"color": "gray"}, "title": "istekki.fi - youtube.com"}, {"from": "istekki.fi", "to": "cookieyes.com", "width": 1, "color": {"color": "gray"}, "title": "istekki.fi - cookieyes.com"}, {"from": "karelia.fi", "to": "kiwi.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - kiwi.fi"}, {"from": "karelia.fi", "to": "invest-alliance.eu", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - invest-alliance.eu"}, {"from": "karelia.fi", "to": "joas.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - joas.fi"}, {"from": "karelia.fi", "to": "e-exam.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - e-exam.fi"}, {"from": "karelia.fi", "to": "webropol.com", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - webropol.com"}, {"from": "karelia.fi", "to": "autismiliitto.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - autismiliitto.fi"}, {"from": "karelia.fi", "to": "elamassa.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - elamassa.fi"}, {"from": "karelia.fi", "to": "eduuni.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - eduuni.fi"}, {"from": "karelia.fi", "to": "vaylaopinnot.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - vaylaopinnot.fi"}, {"from": "karelia.fi", "to": "joensuu.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - joensuu.fi"}, {"from": "karelia.fi", "to": "verkkolaskuosoite.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - verkkolaskuosoite.fi"}, {"from": "karelia.fi", "to": "mail-eur.net", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - mail-eur.net"}, {"from": "karelia.fi", "to": "meitadev.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - meitadev.fi"}, {"from": "karelia.fi", "to": "parkman.io", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - parkman.io"}, {"from": "karelia.fi", "to": "vk-kustannus.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - vk-kustannus.fi"}, {"from": "karelia.fi", "to": "chatgpt.com", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - chatgpt.com"}, {"from": "karelia.fi", "to": "yths.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - yths.fi"}, {"from": "karelia.fi", "to": "invest4excellence.eu", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - invest4excellence.eu"}, {"from": "karelia.fi", "to": "compass-group.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - compass-group.fi"}, {"from": "karelia.fi", "to": "joensuunkodit.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - joensuunkodit.fi"}, {"from": "karelia.fi", "to": "kuntarekry.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - kuntarekry.fi"}, {"from": "karelia.fi", "to": "urn.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - urn.fi"}, {"from": "karelia.fi", "to": "unesco.org", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - unesco.org"}, {"from": "karelia.fi", "to": "Kielibuusti.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - Kielibuusti.fi"}, {"from": "karelia.fi", "to": "okm.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - okm.fi"}, {"from": "karelia.fi", "to": "creativecommons.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - creativecommons.fi"}, {"from": "karelia.fi", "to": "instagram.com", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - instagram.com"}, {"from": "karelia.fi", "to": "tiedejatutkimus.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - tiedejatutkimus.fi"}, {"from": "karelia.fi", "to": "pellervo.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - pellervo.fi"}, {"from": "karelia.fi", "to": "uasjournal.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - uasjournal.fi"}, {"from": "karelia.fi", "to": "doi.org", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - doi.org"}, {"from": "karelia.fi", "to": "creativecommons.org", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - creativecommons.org"}, {"from": "karelia.fi", "to": "mitpressjournals.org", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - mitpressjournals.org"}, {"from": "karelia.fi", "to": "vuokraovi.com", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - vuokraovi.com"}, {"from": "karelia.fi", "to": "pokapoka.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - pokapoka.fi"}, {"from": "karelia.fi", "to": "kennelliitto.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - kennelliitto.fi"}, {"from": "karelia.fi", "to": "sportedu.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - sportedu.fi"}, {"from": "karelia.fi", "to": "edition.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - edition.fi"}, {"from": "karelia.fi", "to": "eduplan.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - eduplan.fi"}, {"from": "karelia.fi", "to": "freepik.com", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - freepik.com"}, {"from": "karelia.fi", "to": "tietosuoja.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - tietosuoja.fi"}, {"from": "karelia.fi", "to": "zoom.us", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - zoom.us"}, {"from": "karelia.fi", "to": "oikeus.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - oikeus.fi"}, {"from": "karelia.fi", "to": "solenovo.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - solenovo.fi"}, {"from": "karelia.fi", "to": "finna.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - finna.fi"}, {"from": "karelia.fi", "to": "iea.org", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - iea.org"}, {"from": "karelia.fi", "to": "facebook.com", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - facebook.com"}, {"from": "karelia.fi", "to": "thinglink.com", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - thinglink.com"}, {"from": "karelia.fi", "to": "euspen.eu", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - euspen.eu"}, {"from": "karelia.fi", "to": "microsoft.com", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - microsoft.com"}, {"from": "karelia.fi", "to": "sharepoint.com", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - sharepoint.com"}, {"from": "karelia.fi", "to": "vastuullinentiede.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - vastuullinentiede.fi"}, {"from": "karelia.fi", "to": "mieli.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - mieli.fi"}, {"from": "karelia.fi", "to": "youtube.com", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - youtube.com"}, {"from": "karelia.fi", "to": "fairdata.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - fairdata.fi"}, {"from": "karelia.fi", "to": "cookiedatabase.org", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - cookiedatabase.org"}, {"from": "karelia.fi", "to": "avara.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - avara.fi"}, {"from": "karelia.fi", "to": "taituri.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - taituri.fi"}, {"from": "karelia.fi", "to": "draftprogram.com", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - draftprogram.com"}, {"from": "karelia.fi", "to": "office.com", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - office.com"}, {"from": "karelia.fi", "to": "valteri.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - valteri.fi"}, {"from": "karelia.fi", "to": "heili.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - heili.fi"}, {"from": "karelia.fi", "to": "zenodo.org", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - zenodo.org"}, {"from": "karelia.fi", "to": "digivisio2030.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - digivisio2030.fi"}, {"from": "karelia.fi", "to": "theseus.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - theseus.fi"}, {"from": "karelia.fi", "to": "businessjoensuu.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - businessjoensuu.fi"}, {"from": "karelia.fi", "to": "asuntoverkko.com", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - asuntoverkko.com"}, {"from": "karelia.fi", "to": "re3data.org", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - re3data.org"}, {"from": "karelia.fi", "to": "seamk.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - seamk.fi"}, {"from": "karelia.fi", "to": "whatsapp.com", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - whatsapp.com"}, {"from": "karelia.fi", "to": "co2data.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - co2data.fi"}, {"from": "karelia.fi", "to": "dmptuuli.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - dmptuuli.fi"}, {"from": "karelia.fi", "to": "issuu.com", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - issuu.com"}, {"from": "karelia.fi", "to": "avointiede.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - avointiede.fi"}, {"from": "karelia.fi", "to": "vastapaino.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - vastapaino.fi"}, {"from": "karelia.fi", "to": "aoe.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - aoe.fi"}, {"from": "karelia.fi", "to": "te-live.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - te-live.fi"}, {"from": "karelia.fi", "to": "ovv.com", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - ovv.com"}, {"from": "karelia.fi", "to": "oikeusrekisterikeskus.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - oikeusrekisterikeskus.fi"}, {"from": "karelia.fi", "to": "xn--sykett-gua.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - xn--sykett-gua.fi"}, {"from": "karelia.fi", "to": "joensuunelli.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - joensuunelli.fi"}, {"from": "karelia.fi", "to": "ncp.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - ncp.fi"}, {"from": "karelia.fi", "to": "ammattikorkeakouluun.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - ammattikorkeakouluun.fi"}, {"from": "karelia.fi", "to": "kela.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - kela.fi"}, {"from": "karelia.fi", "to": "joensuues.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - joensuues.fi"}, {"from": "karelia.fi", "to": "webropolsurveys.com", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - webropolsurveys.com"}, {"from": "karelia.fi", "to": "opin.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - opin.fi"}, {"from": "karelia.fi", "to": "irena.org", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - irena.org"}, {"from": "karelia.fi", "to": "opintopolku.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - opintopolku.fi"}, {"from": "karelia.fi", "to": "youtu.be", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - youtu.be"}, {"from": "karelia.fi", "to": "karvi.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - karvi.fi"}, {"from": "karelia.fi", "to": "kaypahoito.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - kaypahoito.fi"}, {"from": "karelia.fi", "to": "tenk.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - tenk.fi"}, {"from": "karelia.fi", "to": "tem.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - tem.fi"}, {"from": "karelia.fi", "to": "aka.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - aka.fi"}, {"from": "karelia.fi", "to": "tuni.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - tuni.fi"}, {"from": "karelia.fi", "to": "degruyterbrill.com", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - degruyterbrill.com"}, {"from": "karelia.fi", "to": "gcfinland.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - gcfinland.fi"}, {"from": "karelia.fi", "to": "linkedin.com", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - linkedin.com"}, {"from": "karelia.fi", "to": "google.com", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - google.com"}, {"from": "karelia.fi", "to": "howspace.com", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - howspace.com"}, {"from": "lujatalo.fi", "to": "easywhistle.com", "width": 1, "color": {"color": "gray"}, "title": "lujatalo.fi - easywhistle.com"}, {"from": "lujatalo.fi", "to": "office.com", "width": 1, "color": {"color": "gray"}, "title": "lujatalo.fi - office.com"}, {"from": "lujatalo.fi", "to": "emmi.fi", "width": 1, "color": {"color": "gray"}, "title": "lujatalo.fi - emmi.fi"}, {"from": "lujatalo.fi", "to": "aboutcookies.org", "width": 1, "color": {"color": "gray"}, "title": "lujatalo.fi - aboutcookies.org"}, {"from": "lujatalo.fi", "to": "yandex.com", "width": 1, "color": {"color": "gray"}, "title": "lujatalo.fi - yandex.com"}, {"from": "lujatalo.fi", "to": "lujabetong.se", "width": 1, "color": {"color": "gray"}, "title": "lujatalo.fi - lujabetong.se"}, {"from": "lujatalo.fi", "to": "luja.fi", "width": 1, "color": {"color": "gray"}, "title": "lujatalo.fi - luja.fi"}, {"from": "lujatalo.fi", "to": "ucalc.pro", "width": 1, "color": {"color": "gray"}, "title": "lujatalo.fi - ucalc.pro"}, {"from": "lujatalo.fi", "to": "talentadore.com", "width": 1, "color": {"color": "gray"}, "title": "lujatalo.fi - talentadore.com"}, {"from": "lujatalo.fi", "to": "cookiebot.com", "width": 1, "color": {"color": "gray"}, "title": "lujatalo.fi - cookiebot.com"}, {"from": "lujatalo.fi", "to": "safety.google", "width": 1, "color": {"color": "gray"}, "title": "lujatalo.fi - safety.google"}, {"from": "lujatalo.fi", "to": "youtu.be", "width": 1, "color": {"color": "gray"}, "title": "lujatalo.fi - youtu.be"}, {"from": "lujatalo.fi", "to": "albacross.com", "width": 1, "color": {"color": "gray"}, "title": "lujatalo.fi - albacross.com"}, {"from": "lujatalo.fi", "to": "adobe.com", "width": 1, "color": {"color": "gray"}, "title": "lujatalo.fi - adobe.com"}, {"from": "lujatalo.fi", "to": "freespee.com", "width": 1, "color": {"color": "gray"}, "title": "lujatalo.fi - freespee.com"}, {"from": "lujatalo.fi", "to": "enlapser.cloud", "width": 1, "color": {"color": "gray"}, "title": "lujatalo.fi - enlapser.cloud"}, {"from": "lujatalo.fi", "to": "landbot.io", "width": 1, "color": {"color": "gray"}, "title": "lujatalo.fi - landbot.io"}, {"from": "lujatalo.fi", "to": "themesta.net", "width": 1, "color": {"color": "gray"}, "title": "lujatalo.fi - themesta.net"}, {"from": "lujatalo.fi", "to": "seravo.com", "width": 1, "color": {"color": "gray"}, "title": "lujatalo.fi - seravo.com"}, {"from": "lujatalo.fi", "to": "lujakoti.fi", "width": 1, "color": {"color": "gray"}, "title": "lujatalo.fi - lujakoti.fi"}, {"from": "lujatalo.fi", "to": "hybrix.fi", "width": 1, "color": {"color": "gray"}, "title": "lujatalo.fi - hybrix.fi"}, {"from": "lujatalo.fi", "to": "facebook.com", "width": 1, "color": {"color": "gray"}, "title": "lujatalo.fi - facebook.com"}, {"from": "lujatalo.fi", "to": "fibsry.fi", "width": 1, "color": {"color": "gray"}, "title": "lujatalo.fi - fibsry.fi"}, {"from": "lujatalo.fi", "to": "hotjar.com", "width": 1, "color": {"color": "gray"}, "title": "lujatalo.fi - hotjar.com"}, {"from": "lujatalo.fi", "to": "microsoft.com", "width": 1, "color": {"color": "gray"}, "title": "lujatalo.fi - microsoft.com"}, {"from": "lujatalo.fi", "to": "linkedin.com", "width": 1, "color": {"color": "gray"}, "title": "lujatalo.fi - linkedin.com"}, {"from": "lujatalo.fi", "to": "google.com", "width": 1, "color": {"color": "gray"}, "title": "lujatalo.fi - google.com"}, {"from": "lujatalo.fi", "to": "lujabetoni.fi", "width": 1, "color": {"color": "gray"}, "title": "lujatalo.fi - lujabetoni.fi"}, {"from": "lujatalo.fi", "to": "youtube.com", "width": 1, "color": {"color": "gray"}, "title": "lujatalo.fi - youtube.com"}, {"from": "savonia.fi", "to": "snap.com", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - snap.com"}, {"from": "savonia.fi", "to": "kuopionalueenurheiluakatemia.fi", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - kuopionalueenurheiluakatemia.fi"}, {"from": "savonia.fi", "to": "eu4dual.education", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - eu4dual.education"}, {"from": "savonia.fi", "to": "draftprogram.com", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - draftprogram.com"}, {"from": "savonia.fi", "to": "cloudflare.com", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - cloudflare.com"}, {"from": "savonia.fi", "to": "proquest.com", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - proquest.com"}, {"from": "savonia.fi", "to": "oph.fi", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - oph.fi"}, {"from": "savonia.fi", "to": "tiktok.com", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - tiktok.com"}, {"from": "savonia.fi", "to": "kuopio.fi", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - kuopio.fi"}, {"from": "savonia.fi", "to": "ammattikorkeakouluun.fi", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - ammattikorkeakouluun.fi"}, {"from": "savonia.fi", "to": "vimeo.com", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - vimeo.com"}, {"from": "savonia.fi", "to": "instagram.com", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - instagram.com"}, {"from": "savonia.fi", "to": "kela.fi", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - kela.fi"}, {"from": "savonia.fi", "to": "webropolsurveys.com", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - webropolsurveys.com"}, {"from": "savonia.fi", "to": "julkari.fi", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - julkari.fi"}, {"from": "savonia.fi", "to": "tyomarkkinatori.fi", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - tyomarkkinatori.fi"}, {"from": "savonia.fi", "to": "theseus.fi", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - theseus.fi"}, {"from": "savonia.fi", "to": "powerbi.com", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - powerbi.com"}, {"from": "savonia.fi", "to": "finlex.fi", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - finlex.fi"}, {"from": "savonia.fi", "to": "uasjournal.fi", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - uasjournal.fi"}, {"from": "savonia.fi", "to": "doi.org", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - doi.org"}, {"from": "savonia.fi", "to": "opintopolku.fi", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - opintopolku.fi"}, {"from": "savonia.fi", "to": "cookiebot.com", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - cookiebot.com"}, {"from": "savonia.fi", "to": "safety.google", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - safety.google"}, {"from": "savonia.fi", "to": "creativecommons.org", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - creativecommons.org"}, {"from": "savonia.fi", "to": "mdpi.com", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - mdpi.com"}, {"from": "savonia.fi", "to": "ym.fi", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - ym.fi"}, {"from": "savonia.fi", "to": "metsakeskus.fi", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - metsakeskus.fi"}, {"from": "savonia.fi", "to": "readspeaker.com", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - readspeaker.com"}, {"from": "savonia.fi", "to": "stripe.com", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - stripe.com"}, {"from": "savonia.fi", "to": "turkuamk.fi", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - turkuamk.fi"}, {"from": "savonia.fi", "to": "adobe.com", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - adobe.com"}, {"from": "savonia.fi", "to": "mutkary.fi", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - mutkary.fi"}, {"from": "savonia.fi", "to": "slotti.fi", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - slotti.fi"}, {"from": "savonia.fi", "to": "edition.fi", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - edition.fi"}, {"from": "savonia.fi", "to": "eduplan.fi", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - eduplan.fi"}, {"from": "savonia.fi", "to": "journal.fi", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - journal.fi"}, {"from": "savonia.fi", "to": "issuu.com", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - issuu.com"}, {"from": "savonia.fi", "to": "bcpohjois-savo.fi", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - bcpohjois-savo.fi"}, {"from": "savonia.fi", "to": "ssrn.com", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - ssrn.com"}, {"from": "savonia.fi", "to": "thl.fi", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - thl.fi"}, {"from": "savonia.fi", "to": "savilahti.com", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - savilahti.com"}, {"from": "savonia.fi", "to": "soundcloud.com", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - soundcloud.com"}, {"from": "savonia.fi", "to": "savonia.eu", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - savonia.eu"}, {"from": "savonia.fi", "to": "vipunen.fi", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - vipunen.fi"}, {"from": "savonia.fi", "to": "innoflame.fi", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - innoflame.fi"}, {"from": "savonia.fi", "to": "pshyvinvointialue.fi", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - pshyvinvointialue.fi"}, {"from": "savonia.fi", "to": "aoe.fi", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - aoe.fi"}, {"from": "savonia.fi", "to": "kokonaisturvallisuudenosaamiskeskus.fi", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - kokonaisturvallisuudenosaamiskeskus.fi"}, {"from": "savonia.fi", "to": "facebook.com", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - facebook.com"}, {"from": "savonia.fi", "to": "yths.fi", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - yths.fi"}, {"from": "savonia.fi", "to": "saavutettavuusvaatimukset.fi", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - saavutettavuusvaatimukset.fi"}, {"from": "savonia.fi", "to": "laari.info", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - laari.info"}, {"from": "savonia.fi", "to": "kieliverkosto.fi", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - kieliverkosto.fi"}, {"from": "savonia.fi", "to": "thinglink.com", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - thinglink.com"}, {"from": "savonia.fi", "to": "microsoft.com", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - microsoft.com"}, {"from": "savonia.fi", "to": "ists.fi", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - ists.fi"}, {"from": "savonia.fi", "to": "prezi.com", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - prezi.com"}, {"from": "savonia.fi", "to": "sharepoint.com", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - sharepoint.com"}, {"from": "savonia.fi", "to": "linkedin.com", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - linkedin.com"}, {"from": "savonia.fi", "to": "valtioneuvosto.fi", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - valtioneuvosto.fi"}, {"from": "savonia.fi", "to": "youtube.com", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - youtube.com"}, {"from": "savonia.fi", "to": "adform.com", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - adform.com"}, {"from": "savonia.fi", "to": "matterport.com", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - matterport.com"}, {"from": "servica.fi", "to": "luomuravintola.fi", "width": 1, "color": {"color": "gray"}, "title": "servica.fi - luomuravintola.fi"}, {"from": "servica.fi", "to": "kuopio.fi", "width": 1, "color": {"color": "gray"}, "title": "servica.fi - kuopio.fi"}, {"from": "servica.fi", "to": "rekrytointi.com", "width": 1, "color": {"color": "gray"}, "title": "servica.fi - rekrytointi.com"}, {"from": "servica.fi", "to": "instagram.com", "width": 1, "color": {"color": "gray"}, "title": "servica.fi - instagram.com"}, {"from": "servica.fi", "to": "yima40.com", "width": 1, "color": {"color": "gray"}, "title": "servica.fi - yima40.com"}, {"from": "servica.fi", "to": "cookiehub.com", "width": 1, "color": {"color": "gray"}, "title": "servica.fi - cookiehub.com"}, {"from": "servica.fi", "to": "kiwa.com", "width": 1, "color": {"color": "gray"}, "title": "servica.fi - kiwa.com"}, {"from": "servica.fi", "to": "safety.google", "width": 1, "color": {"color": "gray"}, "title": "servica.fi - safety.google"}, {"from": "servica.fi", "to": "ym.fi", "width": 1, "color": {"color": "gray"}, "title": "servica.fi - ym.fi"}, {"from": "servica.fi", "to": "hankintailmoitukset.fi", "width": 1, "color": {"color": "gray"}, "title": "servica.fi - hankintailmoitukset.fi"}, {"from": "servica.fi", "to": "suomalainentyo.fi", "width": 1, "color": {"color": "gray"}, "title": "servica.fi - suomalainentyo.fi"}, {"from": "servica.fi", "to": "oivahymy.fi", "width": 1, "color": {"color": "gray"}, "title": "servica.fi - oivahymy.fi"}, {"from": "servica.fi", "to": "kiertotaloussuomi.fi", "width": 1, "color": {"color": "gray"}, "title": "servica.fi - kiertotaloussuomi.fi"}, {"from": "servica.fi", "to": "tietosuojakouluttaja.fi", "width": 1, "color": {"color": "gray"}, "title": "servica.fi - tietosuojakouluttaja.fi"}, {"from": "servica.fi", "to": "tietosuoja.fi", "width": 1, "color": {"color": "gray"}, "title": "servica.fi - tietosuoja.fi"}, {"from": "servica.fi", "to": "whistleb.com", "width": 1, "color": {"color": "gray"}, "title": "servica.fi - whistleb.com"}, {"from": "servica.fi", "to": "facebook.com", "width": 1, "color": {"color": "gray"}, "title": "servica.fi - facebook.com"}, {"from": "servica.fi", "to": "fibsry.fi", "width": 1, "color": {"color": "gray"}, "title": "servica.fi - fibsry.fi"}, {"from": "servica.fi", "to": "granlundmanager.fi", "width": 1, "color": {"color": "gray"}, "title": "servica.fi - granlundmanager.fi"}, {"from": "servica.fi", "to": "microsoft.com", "width": 1, "color": {"color": "gray"}, "title": "servica.fi - microsoft.com"}, {"from": "servica.fi", "to": "linkedin.com", "width": 1, "color": {"color": "gray"}, "title": "servica.fi - linkedin.com"}, {"from": "servica.fi", "to": "europa.eu", "width": 1, "color": {"color": "gray"}, "title": "servica.fi - europa.eu"}, {"from": "servica.fi", "to": "sst.fi", "width": 1, "color": {"color": "gray"}, "title": "servica.fi - sst.fi"}];
+    var originalNodes = [{"id": "karelia.fi", "label": "karelia.fi", "size": 22.0, "color": {"background": "green", "border": "gray"}, "title": "karelia.fi-0.44_8542", "shape": "dot", "shape_label": "dot"}, {"id": "savonia.fi", "label": "savonia.fi", "size": 14.000000000000002, "color": {"background": "red", "border": "gray"}, "title": "savonia.fi-0.28_8542", "shape": "dot", "shape_label": "dot"}, {"id": "lujatalo.fi", "label": "lujatalo.fi", "size": 6.5, "color": {"background": "red", "border": "gray"}, "title": "lujatalo.fi-0.13_4120", "shape": "dot", "shape_label": "dot"}, {"id": "abloy.fi", "label": "abloy.fi", "size": 5.5, "color": {"background": "green", "border": "gray"}, "title": "abloy.fi-0.11_2572", "shape": "dot", "shape_label": "dot"}, {"id": "istekki.fi", "label": "istekki.fi", "size": 5.5, "color": {"background": "red", "border": "gray"}, "title": "istekki.fi-0.11_6202", "shape": "dot", "shape_label": "dot"}, {"id": "servica.fi", "label": "servica.fi", "size": 5.0, "color": {"background": "red", "border": "gray"}, "title": "servica.fi-0.1_8299", "shape": "dot", "shape_label": "dot"}, {"id": "bromangroup.fi", "label": "bromangroup.fi", "size": 3.0, "color": {"background": "green", "border": "gray"}, "title": "bromangroup.fi-0.06_4532", "shape": "dot", "shape_label": "dot"}, {"id": "kiwi.fi", "label": "kiwi.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "kiwi.fi", "shape": "dot", "shape_label": "dot"}, {"id": "invest-alliance.eu", "label": "invest-alliance.eu", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "invest-alliance.eu", "shape": "dot", "shape_label": "dot"}, {"id": "joas.fi", "label": "joas.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "joas.fi", "shape": "dot", "shape_label": "dot"}, {"id": "e-exam.fi", "label": "e-exam.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "e-exam.fi", "shape": "dot", "shape_label": "dot"}, {"id": "webropol.com", "label": "webropol.com", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "webropol.com", "shape": "dot", "shape_label": "dot"}, {"id": "autismiliitto.fi", "label": "autismiliitto.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "autismiliitto.fi", "shape": "dot", "shape_label": "dot"}, {"id": "elamassa.fi", "label": "elamassa.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "elamassa.fi", "shape": "dot", "shape_label": "dot"}, {"id": "eduuni.fi", "label": "eduuni.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "eduuni.fi", "shape": "dot", "shape_label": "dot"}, {"id": "vaylaopinnot.fi", "label": "vaylaopinnot.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "vaylaopinnot.fi", "shape": "dot", "shape_label": "dot"}, {"id": "joensuu.fi", "label": "joensuu.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "joensuu.fi", "shape": "dot", "shape_label": "dot"}, {"id": "verkkolaskuosoite.fi", "label": "verkkolaskuosoite.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "verkkolaskuosoite.fi", "shape": "dot", "shape_label": "dot"}, {"id": "mail-eur.net", "label": "mail-eur.net", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "mail-eur.net", "shape": "dot", "shape_label": "dot"}, {"id": "meitadev.fi", "label": "meitadev.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "meitadev.fi", "shape": "dot", "shape_label": "dot"}, {"id": "parkman.io", "label": "parkman.io", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "parkman.io", "shape": "dot", "shape_label": "dot"}, {"id": "vk-kustannus.fi", "label": "vk-kustannus.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "vk-kustannus.fi", "shape": "dot", "shape_label": "dot"}, {"id": "chatgpt.com", "label": "chatgpt.com", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "chatgpt.com", "shape": "dot", "shape_label": "dot"}, {"id": "invest4excellence.eu", "label": "invest4excellence.eu", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "invest4excellence.eu", "shape": "dot", "shape_label": "dot"}, {"id": "compass-group.fi", "label": "compass-group.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "compass-group.fi", "shape": "dot", "shape_label": "dot"}, {"id": "joensuunkodit.fi", "label": "joensuunkodit.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "joensuunkodit.fi", "shape": "dot", "shape_label": "dot"}, {"id": "kuntarekry.fi", "label": "kuntarekry.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "kuntarekry.fi", "shape": "dot", "shape_label": "dot"}, {"id": "urn.fi", "label": "urn.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "urn.fi", "shape": "dot", "shape_label": "dot"}, {"id": "unesco.org", "label": "unesco.org", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "unesco.org", "shape": "dot", "shape_label": "dot"}, {"id": "Kielibuusti.fi", "label": "Kielibuusti.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "Kielibuusti.fi", "shape": "dot", "shape_label": "dot"}, {"id": "okm.fi", "label": "okm.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "okm.fi", "shape": "dot", "shape_label": "dot"}, {"id": "creativecommons.fi", "label": "creativecommons.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "creativecommons.fi", "shape": "dot", "shape_label": "dot"}, {"id": "tiedejatutkimus.fi", "label": "tiedejatutkimus.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "tiedejatutkimus.fi", "shape": "dot", "shape_label": "dot"}, {"id": "pellervo.fi", "label": "pellervo.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "pellervo.fi", "shape": "dot", "shape_label": "dot"}, {"id": "mitpressjournals.org", "label": "mitpressjournals.org", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "mitpressjournals.org", "shape": "dot", "shape_label": "dot"}, {"id": "vuokraovi.com", "label": "vuokraovi.com", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "vuokraovi.com", "shape": "dot", "shape_label": "dot"}, {"id": "pokapoka.fi", "label": "pokapoka.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "pokapoka.fi", "shape": "dot", "shape_label": "dot"}, {"id": "kennelliitto.fi", "label": "kennelliitto.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "kennelliitto.fi", "shape": "dot", "shape_label": "dot"}, {"id": "sportedu.fi", "label": "sportedu.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "sportedu.fi", "shape": "dot", "shape_label": "dot"}, {"id": "freepik.com", "label": "freepik.com", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "freepik.com", "shape": "dot", "shape_label": "dot"}, {"id": "zoom.us", "label": "zoom.us", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "zoom.us", "shape": "dot", "shape_label": "dot"}, {"id": "oikeus.fi", "label": "oikeus.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "oikeus.fi", "shape": "dot", "shape_label": "dot"}, {"id": "solenovo.fi", "label": "solenovo.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "solenovo.fi", "shape": "dot", "shape_label": "dot"}, {"id": "finna.fi", "label": "finna.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "finna.fi", "shape": "dot", "shape_label": "dot"}, {"id": "iea.org", "label": "iea.org", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "iea.org", "shape": "dot", "shape_label": "dot"}, {"id": "euspen.eu", "label": "euspen.eu", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "euspen.eu", "shape": "dot", "shape_label": "dot"}, {"id": "vastuullinentiede.fi", "label": "vastuullinentiede.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "vastuullinentiede.fi", "shape": "dot", "shape_label": "dot"}, {"id": "mieli.fi", "label": "mieli.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "mieli.fi", "shape": "dot", "shape_label": "dot"}, {"id": "fairdata.fi", "label": "fairdata.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "fairdata.fi", "shape": "dot", "shape_label": "dot"}, {"id": "cookiedatabase.org", "label": "cookiedatabase.org", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "cookiedatabase.org", "shape": "dot", "shape_label": "dot"}, {"id": "avara.fi", "label": "avara.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "avara.fi", "shape": "dot", "shape_label": "dot"}, {"id": "taituri.fi", "label": "taituri.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "taituri.fi", "shape": "dot", "shape_label": "dot"}, {"id": "valteri.fi", "label": "valteri.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "valteri.fi", "shape": "dot", "shape_label": "dot"}, {"id": "heili.fi", "label": "heili.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "heili.fi", "shape": "dot", "shape_label": "dot"}, {"id": "zenodo.org", "label": "zenodo.org", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "zenodo.org", "shape": "dot", "shape_label": "dot"}, {"id": "digivisio2030.fi", "label": "digivisio2030.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "digivisio2030.fi", "shape": "dot", "shape_label": "dot"}, {"id": "businessjoensuu.fi", "label": "businessjoensuu.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "businessjoensuu.fi", "shape": "dot", "shape_label": "dot"}, {"id": "asuntoverkko.com", "label": "asuntoverkko.com", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "asuntoverkko.com", "shape": "dot", "shape_label": "dot"}, {"id": "re3data.org", "label": "re3data.org", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "re3data.org", "shape": "dot", "shape_label": "dot"}, {"id": "seamk.fi", "label": "seamk.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "seamk.fi", "shape": "dot", "shape_label": "dot"}, {"id": "whatsapp.com", "label": "whatsapp.com", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "whatsapp.com", "shape": "dot", "shape_label": "dot"}, {"id": "co2data.fi", "label": "co2data.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "co2data.fi", "shape": "dot", "shape_label": "dot"}, {"id": "dmptuuli.fi", "label": "dmptuuli.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "dmptuuli.fi", "shape": "dot", "shape_label": "dot"}, {"id": "avointiede.fi", "label": "avointiede.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "avointiede.fi", "shape": "dot", "shape_label": "dot"}, {"id": "vastapaino.fi", "label": "vastapaino.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "vastapaino.fi", "shape": "dot", "shape_label": "dot"}, {"id": "te-live.fi", "label": "te-live.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "te-live.fi", "shape": "dot", "shape_label": "dot"}, {"id": "ovv.com", "label": "ovv.com", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "ovv.com", "shape": "dot", "shape_label": "dot"}, {"id": "oikeusrekisterikeskus.fi", "label": "oikeusrekisterikeskus.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "oikeusrekisterikeskus.fi", "shape": "dot", "shape_label": "dot"}, {"id": "xn--sykett-gua.fi", "label": "xn--sykett-gua.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "xn--sykett-gua.fi", "shape": "dot", "shape_label": "dot"}, {"id": "joensuunelli.fi", "label": "joensuunelli.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "joensuunelli.fi", "shape": "dot", "shape_label": "dot"}, {"id": "ncp.fi", "label": "ncp.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "ncp.fi", "shape": "dot", "shape_label": "dot"}, {"id": "joensuues.fi", "label": "joensuues.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "joensuues.fi", "shape": "dot", "shape_label": "dot"}, {"id": "opin.fi", "label": "opin.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "opin.fi", "shape": "dot", "shape_label": "dot"}, {"id": "irena.org", "label": "irena.org", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "irena.org", "shape": "dot", "shape_label": "dot"}, {"id": "karvi.fi", "label": "karvi.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "karvi.fi", "shape": "dot", "shape_label": "dot"}, {"id": "kaypahoito.fi", "label": "kaypahoito.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "kaypahoito.fi", "shape": "dot", "shape_label": "dot"}, {"id": "tenk.fi", "label": "tenk.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "tenk.fi", "shape": "dot", "shape_label": "dot"}, {"id": "tem.fi", "label": "tem.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "tem.fi", "shape": "dot", "shape_label": "dot"}, {"id": "aka.fi", "label": "aka.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "aka.fi", "shape": "dot", "shape_label": "dot"}, {"id": "tuni.fi", "label": "tuni.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "tuni.fi", "shape": "dot", "shape_label": "dot"}, {"id": "degruyterbrill.com", "label": "degruyterbrill.com", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "degruyterbrill.com", "shape": "dot", "shape_label": "dot"}, {"id": "gcfinland.fi", "label": "gcfinland.fi", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "gcfinland.fi", "shape": "dot", "shape_label": "dot"}, {"id": "howspace.com", "label": "howspace.com", "size": 0.44, "color": {"background": "blue", "border": "gray"}, "title": "howspace.com", "shape": "dot", "shape_label": "dot"}, {"id": "tiktok.com", "label": "tiktok.com", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "tiktok.com", "shape": "dot", "shape_label": "dot"}, {"id": "youtube.com", "label": "youtube.com", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "youtube.com", "shape": "dot", "shape_label": "dot"}, {"id": "tyomarkkinatori.fi", "label": "tyomarkkinatori.fi", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "tyomarkkinatori.fi", "shape": "dot", "shape_label": "dot"}, {"id": "saavutettavuusvaatimukset.fi", "label": "saavutettavuusvaatimukset.fi", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "saavutettavuusvaatimukset.fi", "shape": "dot", "shape_label": "dot"}, {"id": "yths.fi", "label": "yths.fi", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "yths.fi", "shape": "dot", "shape_label": "dot"}, {"id": "uasjournal.fi", "label": "uasjournal.fi", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "uasjournal.fi", "shape": "dot", "shape_label": "dot"}, {"id": "doi.org", "label": "doi.org", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "doi.org", "shape": "dot", "shape_label": "dot"}, {"id": "creativecommons.org", "label": "creativecommons.org", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "creativecommons.org", "shape": "dot", "shape_label": "dot"}, {"id": "edition.fi", "label": "edition.fi", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "edition.fi", "shape": "dot", "shape_label": "dot"}, {"id": "eduplan.fi", "label": "eduplan.fi", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "eduplan.fi", "shape": "dot", "shape_label": "dot"}, {"id": "thinglink.com", "label": "thinglink.com", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "thinglink.com", "shape": "dot", "shape_label": "dot"}, {"id": "sharepoint.com", "label": "sharepoint.com", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "sharepoint.com", "shape": "dot", "shape_label": "dot"}, {"id": "draftprogram.com", "label": "draftprogram.com", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "draftprogram.com", "shape": "dot", "shape_label": "dot"}, {"id": "theseus.fi", "label": "theseus.fi", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "theseus.fi", "shape": "dot", "shape_label": "dot"}, {"id": "issuu.com", "label": "issuu.com", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "issuu.com", "shape": "dot", "shape_label": "dot"}, {"id": "aoe.fi", "label": "aoe.fi", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "aoe.fi", "shape": "dot", "shape_label": "dot"}, {"id": "ammattikorkeakouluun.fi", "label": "ammattikorkeakouluun.fi", "size": 0.28, "color": {"background": "blue", "border": "gray"}, "title": "ammattikorkeakouluun.fi", "shape": "dot", "shape_label": "dot"}];
+    var originalEdges = [{"from": "abloy.fi", "to": "tiktok.com", "width": 1, "color": {"color": "gray"}, "title": "abloy.fi - tiktok.com"}, {"from": "abloy.fi", "to": "youtube.com", "width": 1, "color": {"color": "gray"}, "title": "abloy.fi - youtube.com"}, {"from": "istekki.fi", "to": "tyomarkkinatori.fi", "width": 1, "color": {"color": "gray"}, "title": "istekki.fi - tyomarkkinatori.fi"}, {"from": "istekki.fi", "to": "saavutettavuusvaatimukset.fi", "width": 1, "color": {"color": "gray"}, "title": "istekki.fi - saavutettavuusvaatimukset.fi"}, {"from": "istekki.fi", "to": "youtube.com", "width": 1, "color": {"color": "gray"}, "title": "istekki.fi - youtube.com"}, {"from": "karelia.fi", "to": "kiwi.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - kiwi.fi"}, {"from": "karelia.fi", "to": "invest-alliance.eu", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - invest-alliance.eu"}, {"from": "karelia.fi", "to": "joas.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - joas.fi"}, {"from": "karelia.fi", "to": "e-exam.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - e-exam.fi"}, {"from": "karelia.fi", "to": "webropol.com", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - webropol.com"}, {"from": "karelia.fi", "to": "autismiliitto.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - autismiliitto.fi"}, {"from": "karelia.fi", "to": "elamassa.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - elamassa.fi"}, {"from": "karelia.fi", "to": "eduuni.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - eduuni.fi"}, {"from": "karelia.fi", "to": "vaylaopinnot.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - vaylaopinnot.fi"}, {"from": "karelia.fi", "to": "joensuu.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - joensuu.fi"}, {"from": "karelia.fi", "to": "verkkolaskuosoite.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - verkkolaskuosoite.fi"}, {"from": "karelia.fi", "to": "mail-eur.net", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - mail-eur.net"}, {"from": "karelia.fi", "to": "meitadev.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - meitadev.fi"}, {"from": "karelia.fi", "to": "parkman.io", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - parkman.io"}, {"from": "karelia.fi", "to": "vk-kustannus.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - vk-kustannus.fi"}, {"from": "karelia.fi", "to": "chatgpt.com", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - chatgpt.com"}, {"from": "karelia.fi", "to": "yths.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - yths.fi"}, {"from": "karelia.fi", "to": "invest4excellence.eu", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - invest4excellence.eu"}, {"from": "karelia.fi", "to": "compass-group.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - compass-group.fi"}, {"from": "karelia.fi", "to": "joensuunkodit.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - joensuunkodit.fi"}, {"from": "karelia.fi", "to": "kuntarekry.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - kuntarekry.fi"}, {"from": "karelia.fi", "to": "urn.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - urn.fi"}, {"from": "karelia.fi", "to": "unesco.org", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - unesco.org"}, {"from": "karelia.fi", "to": "Kielibuusti.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - Kielibuusti.fi"}, {"from": "karelia.fi", "to": "okm.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - okm.fi"}, {"from": "karelia.fi", "to": "creativecommons.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - creativecommons.fi"}, {"from": "karelia.fi", "to": "tiedejatutkimus.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - tiedejatutkimus.fi"}, {"from": "karelia.fi", "to": "pellervo.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - pellervo.fi"}, {"from": "karelia.fi", "to": "uasjournal.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - uasjournal.fi"}, {"from": "karelia.fi", "to": "doi.org", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - doi.org"}, {"from": "karelia.fi", "to": "creativecommons.org", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - creativecommons.org"}, {"from": "karelia.fi", "to": "mitpressjournals.org", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - mitpressjournals.org"}, {"from": "karelia.fi", "to": "vuokraovi.com", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - vuokraovi.com"}, {"from": "karelia.fi", "to": "pokapoka.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - pokapoka.fi"}, {"from": "karelia.fi", "to": "kennelliitto.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - kennelliitto.fi"}, {"from": "karelia.fi", "to": "sportedu.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - sportedu.fi"}, {"from": "karelia.fi", "to": "edition.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - edition.fi"}, {"from": "karelia.fi", "to": "eduplan.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - eduplan.fi"}, {"from": "karelia.fi", "to": "freepik.com", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - freepik.com"}, {"from": "karelia.fi", "to": "zoom.us", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - zoom.us"}, {"from": "karelia.fi", "to": "oikeus.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - oikeus.fi"}, {"from": "karelia.fi", "to": "solenovo.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - solenovo.fi"}, {"from": "karelia.fi", "to": "finna.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - finna.fi"}, {"from": "karelia.fi", "to": "iea.org", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - iea.org"}, {"from": "karelia.fi", "to": "thinglink.com", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - thinglink.com"}, {"from": "karelia.fi", "to": "euspen.eu", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - euspen.eu"}, {"from": "karelia.fi", "to": "sharepoint.com", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - sharepoint.com"}, {"from": "karelia.fi", "to": "vastuullinentiede.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - vastuullinentiede.fi"}, {"from": "karelia.fi", "to": "mieli.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - mieli.fi"}, {"from": "karelia.fi", "to": "youtube.com", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - youtube.com"}, {"from": "karelia.fi", "to": "fairdata.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - fairdata.fi"}, {"from": "karelia.fi", "to": "cookiedatabase.org", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - cookiedatabase.org"}, {"from": "karelia.fi", "to": "avara.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - avara.fi"}, {"from": "karelia.fi", "to": "taituri.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - taituri.fi"}, {"from": "karelia.fi", "to": "draftprogram.com", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - draftprogram.com"}, {"from": "karelia.fi", "to": "valteri.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - valteri.fi"}, {"from": "karelia.fi", "to": "heili.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - heili.fi"}, {"from": "karelia.fi", "to": "zenodo.org", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - zenodo.org"}, {"from": "karelia.fi", "to": "digivisio2030.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - digivisio2030.fi"}, {"from": "karelia.fi", "to": "theseus.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - theseus.fi"}, {"from": "karelia.fi", "to": "businessjoensuu.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - businessjoensuu.fi"}, {"from": "karelia.fi", "to": "asuntoverkko.com", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - asuntoverkko.com"}, {"from": "karelia.fi", "to": "re3data.org", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - re3data.org"}, {"from": "karelia.fi", "to": "seamk.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - seamk.fi"}, {"from": "karelia.fi", "to": "whatsapp.com", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - whatsapp.com"}, {"from": "karelia.fi", "to": "co2data.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - co2data.fi"}, {"from": "karelia.fi", "to": "dmptuuli.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - dmptuuli.fi"}, {"from": "karelia.fi", "to": "issuu.com", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - issuu.com"}, {"from": "karelia.fi", "to": "avointiede.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - avointiede.fi"}, {"from": "karelia.fi", "to": "vastapaino.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - vastapaino.fi"}, {"from": "karelia.fi", "to": "aoe.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - aoe.fi"}, {"from": "karelia.fi", "to": "te-live.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - te-live.fi"}, {"from": "karelia.fi", "to": "ovv.com", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - ovv.com"}, {"from": "karelia.fi", "to": "oikeusrekisterikeskus.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - oikeusrekisterikeskus.fi"}, {"from": "karelia.fi", "to": "xn--sykett-gua.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - xn--sykett-gua.fi"}, {"from": "karelia.fi", "to": "joensuunelli.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - joensuunelli.fi"}, {"from": "karelia.fi", "to": "ncp.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - ncp.fi"}, {"from": "karelia.fi", "to": "ammattikorkeakouluun.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - ammattikorkeakouluun.fi"}, {"from": "karelia.fi", "to": "joensuues.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - joensuues.fi"}, {"from": "karelia.fi", "to": "opin.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - opin.fi"}, {"from": "karelia.fi", "to": "irena.org", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - irena.org"}, {"from": "karelia.fi", "to": "karvi.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - karvi.fi"}, {"from": "karelia.fi", "to": "kaypahoito.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - kaypahoito.fi"}, {"from": "karelia.fi", "to": "tenk.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - tenk.fi"}, {"from": "karelia.fi", "to": "tem.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - tem.fi"}, {"from": "karelia.fi", "to": "aka.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - aka.fi"}, {"from": "karelia.fi", "to": "tuni.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - tuni.fi"}, {"from": "karelia.fi", "to": "degruyterbrill.com", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - degruyterbrill.com"}, {"from": "karelia.fi", "to": "gcfinland.fi", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - gcfinland.fi"}, {"from": "karelia.fi", "to": "howspace.com", "width": 1, "color": {"color": "gray"}, "title": "karelia.fi - howspace.com"}, {"from": "lujatalo.fi", "to": "youtube.com", "width": 1, "color": {"color": "gray"}, "title": "lujatalo.fi - youtube.com"}, {"from": "savonia.fi", "to": "draftprogram.com", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - draftprogram.com"}, {"from": "savonia.fi", "to": "tiktok.com", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - tiktok.com"}, {"from": "savonia.fi", "to": "ammattikorkeakouluun.fi", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - ammattikorkeakouluun.fi"}, {"from": "savonia.fi", "to": "tyomarkkinatori.fi", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - tyomarkkinatori.fi"}, {"from": "savonia.fi", "to": "theseus.fi", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - theseus.fi"}, {"from": "savonia.fi", "to": "uasjournal.fi", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - uasjournal.fi"}, {"from": "savonia.fi", "to": "doi.org", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - doi.org"}, {"from": "savonia.fi", "to": "creativecommons.org", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - creativecommons.org"}, {"from": "savonia.fi", "to": "edition.fi", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - edition.fi"}, {"from": "savonia.fi", "to": "eduplan.fi", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - eduplan.fi"}, {"from": "savonia.fi", "to": "issuu.com", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - issuu.com"}, {"from": "savonia.fi", "to": "aoe.fi", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - aoe.fi"}, {"from": "savonia.fi", "to": "yths.fi", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - yths.fi"}, {"from": "savonia.fi", "to": "saavutettavuusvaatimukset.fi", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - saavutettavuusvaatimukset.fi"}, {"from": "savonia.fi", "to": "thinglink.com", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - thinglink.com"}, {"from": "savonia.fi", "to": "sharepoint.com", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - sharepoint.com"}, {"from": "savonia.fi", "to": "youtube.com", "width": 1, "color": {"color": "gray"}, "title": "savonia.fi - youtube.com"}];
+    var nodes = new vis.DataSet(originalNodes);
+    var edges = new vis.DataSet(originalEdges);
+    var lastZoomCenter = { x: 0, y: 0 };
+    var lastScale = 1;
+    var uniqueLabels = [...new Set(allNodes.map(node => node.label).filter(label => label))].sort();
+    var previousNodes = originalNodes;
+    var previousEdges = originalEdges;
+
+    var container = document.getElementById('mynetwork');
+    if (!container) {
+        console.error("Container #mynetwork not found!");
+    }
+    var loadingBar = document.getElementById('loading-bar');
+    var loadingProgress = document.getElementById('loading-progress');
+    var loadingPercentage = document.getElementById('loading-percentage');
+
+    var data = {
+        nodes: nodes,
+        edges: edges
+    };
+    var options = {
+        nodes: {
+            shape: 'dot',
+            size: 20,
+            font: { size: 14, color: '#333333' },
+            borderWidth: 2,
+            color: {
+                background: '#97C2E6',
+                border: '#2B7CE9',
+                highlight: { background: '#D2E5FF', border: '#2B7CE9' },
+                hover: { background: '#D2E5FF', border: '#2B7CE9' }
+            }
+        },
+        edges: {
+            width: 1,
+            color: { color: '#848484', highlight: '#848484', hover: '#848484', inherit: 'from', opacity: 0.8 },
+            smooth: { enabled: true, type: "dynamic" },
+            font: { size: 12 }
+        },
+        physics: {
+            enabled: true,
+            stabilization: {
+                enabled: true,
+                iterations: 1000,
+                updateInterval: 50
+            },
+            barnesHut: {
+                gravitationalConstant: -2000,
+                centralGravity: 0.3,
+                springLength: 95,
+                springConstant: 0.04,
+                damping: 0.09,
+                avoidOverlap: 0
+            },
+            solver: 'barnesHut'
+        },
+        configure: {
+            enabled: true,
+            filter: 'physics',
+            showButton: true,
+            container: document.getElementById('physics-config')
+        }
+    };
+
+    container.style.opacity = '0';
+
+    var network = new vis.Network(container, data, options);
+    if (!network) {
+        console.error("Failed to initialize vis.Network!");
+    }
+
+    network.on("stabilizationProgress", function(params) {
+        var progress = (params.iterations / params.total) * 100;
+        if (loadingProgress && loadingPercentage) {
+            loadingProgress.style.width = progress + '%';
+            loadingPercentage.textContent = Math.round(progress) + '%';
+        }
+    });
+
+    network.on("stabilizationIterationsDone", function() {
+        if (loadingBar) {
+            loadingBar.style.display = 'none';
+        }
+        container.style.opacity = '1';
+        network.setOptions({ physics: false });
+        updateNodes();
+    });
+
+    function getSelectedOptions(selectElement) {
+        return Array.from(selectElement.selectedOptions).map(option => option.value);
+    }
+
+    function updateSuggestions() {
+        var input = document.getElementById('label-search').value;
+        var suggestionsDiv = document.getElementById('label-suggestions');
+        suggestionsDiv.innerHTML = '';
+        suggestionsDiv.style.display = 'none';
+
+        if (input.trim() !== '') {
+            var terms = input.split(',').map(term => term.trim().toLowerCase());
+            var lastTerm = terms[terms.length - 1];
+            if (lastTerm) {
+                var matches = uniqueLabels.filter(label => 
+                    label.toLowerCase().includes(lastTerm)
+                );
+                if (matches.length > 0) {
+                    suggestionsDiv.style.display = 'block';
+                    matches.forEach(label => {
+                        var div = document.createElement('div');
+                        div.className = 'suggestion-item';
+                        div.textContent = label;
+                        div.onclick = function() {
+                            var currentTerms = input.split(',').slice(0, -1);
+                            currentTerms.push(label);
+                            document.getElementById('label-search').value = currentTerms.join(',') + (currentTerms.length > 0 ? ',' : '');
+                            suggestionsDiv.innerHTML = '';
+                            suggestionsDiv.style.display = 'none';
+                            updateNodes();
+                        };
+                        suggestionsDiv.appendChild(div);
+                    });
+                }
+            }
+        } else {
+            updateNodes();
+        }
+    }
+
+    function saveSelection() {
+        var currentNodes = nodes.get();
+        var currentEdges = edges.get();
+
+        // Create JSON strings
+        var nodesJson = JSON.stringify(currentNodes, null, 2);
+        var edgesJson = JSON.stringify(currentEdges, null, 2);
+
+        // Create Blob objects for download
+        var nodesBlob = new Blob([nodesJson], { type: 'application/json' });
+        var edgesBlob = new Blob([edgesJson], { type: 'application/json' });
+
+        // Create temporary URLs for the Blobs
+        var nodesUrl = URL.createObjectURL(nodesBlob);
+        var edgesUrl = URL.createObjectURL(edgesBlob);
+
+        // Create download links
+        var nodesLink = document.createElement('a');
+        nodesLink.href = nodesUrl;
+        nodesLink.download = 'nodes.json';
+        document.body.appendChild(nodesLink);
+        nodesLink.click();
+        document.body.removeChild(nodesLink);
+
+        var edgesLink = document.createElement('a');
+        edgesLink.href = edgesUrl;
+        edgesLink.download = 'edges.json';
+        document.body.appendChild(edgesLink);
+        edgesLink.click();
+        document.body.removeChild(edgesLink);
+
+        // Clean up URLs
+        URL.revokeObjectURL(nodesUrl);
+        URL.revokeObjectURL(edgesUrl);
+
+        // Log saved locations (simulating file paths for console output)
+        console.log("Nodes saved to: nodes.json");
+        console.log("Edges saved to: edges.json");
+    }
+
+    function updateNodes(zoomCenter = null, zoomDirection = null) {
+        console.log("Updating nodes...");
+        var maxDisplay = parseInt(document.getElementById('max-display-select').value) || 100;
+        var colorSelect = getSelectedOptions(document.getElementById('color-select'));
+        var shapeSelect = getSelectedOptions(document.getElementById('shape-select'));
+        var sizeMin = parseFloat(document.getElementById('size-min').value) || 0;
+        var sizeMax = parseFloat(document.getElementById('size-max').value) || Infinity;
+        var labelSearch = document.getElementById('label-search').value;
+        var titleSelect = getSelectedOptions(document.getElementById('title-select'));
+        var widthMin = document.getElementById('width-min').value ? parseFloat(document.getElementById('width-min').value) : null;
+        var widthMax = document.getElementById('width-max').value ? parseFloat(document.getElementById('width-max').value) : null;
+        var edgeColorSelect = getSelectedOptions(document.getElementById('edge-color-select'));
+
+        var filteredNodes = allNodes;
+        var filteredEdges = allEdges;
+
+        if (labelSearch.trim() !== '') {
+            previousNodes = nodes.get();
+            previousEdges = edges.get();
+            console.log("Saving previous state: ", previousNodes.length, "nodes,", previousEdges.length, "edges");
+
+            var searchTerms = labelSearch.split(',').map(term => term.trim().toLowerCase()).filter(term => term !== '');
+            console.log("Search terms:", searchTerms);
+            var selectedNodes = allNodes.filter(function(node) {
+                return node.label && searchTerms.some(term => node.label.toLowerCase() === term);
+            });
+            console.log("Selected nodes:", selectedNodes.map(node => node.label));
+            var neighborIds = new Set();
+            selectedNodes.forEach(function(node) {
+                neighborIds.add(node.id);
+                allEdges.forEach(function(edge) {
+                    if (edge.from === node.id) {
+                        neighborIds.add(edge.to);
+                    }
+                    if (edge.to === node.id) {
+                        neighborIds.add(edge.from);
+                    }
+                });
+            });
+            console.log("Neighbor IDs:", Array.from(neighborIds));
+            filteredNodes = allNodes.filter(function(node) {
+                return neighborIds.has(node.id);
+            });
+            console.log("Filtered nodes:", filteredNodes.map(node => node.label));
+        } 
+
+        var validNodeIds = new Set();
+        if (widthMin !== null || widthMax !== null) {
+            filteredEdges = allEdges.filter(function(edge) {
+                var widthMatch = true;
+                if (widthMin !== null) {
+                    widthMatch = widthMatch && edge.width >= widthMin;
+                }
+                if (widthMax !== null) {
+                    widthMatch = widthMatch && edge.width <= widthMax;
+                }
+                return widthMatch;
+            });
+            if (widthMin !== null && widthMin > 0) {
+                filteredEdges.forEach(function(edge) {
+                    validNodeIds.add(edge.from);
+                    validNodeIds.add(edge.to);
+                });
+                filteredNodes = filteredNodes.filter(function(node) {
+                    return validNodeIds.has(node.id) || filteredEdges.some(edge => edge.from === node.id || edge.to === node.id);
+                });
+            }
+        }
+
+        filteredNodes = filteredNodes.filter(function(node) {
+            var fullColor = typeof node.color === 'string' ? node.color : node.color.background;
+            var fullShape = node.shape_label || node.shape;
+            var colorMatch = colorSelect.includes('all') || colorSelect.some(cs => fullColor === cs || fullColor.startsWith(cs.split('-')[0]));
+            var shapeMatch = shapeSelect.includes('all') || (shapeSelect.length === 1 && shapeSelect[0] !== 'all' && fullShape === shapeSelect[0]);
+            var sizeMatch = node.size >= sizeMin && node.size <= sizeMax;
+            var titleMatch = titleSelect.includes('all') || (node.title && titleSelect.includes(node.title));
+            return colorMatch && shapeMatch && sizeMatch && titleMatch;
+        });
+
+        filteredNodes.sort((a, b) => b.size - a.size);
+
+        filteredNodes = filteredNodes.slice(0, maxDisplay);
+
+        filteredEdges = allEdges.filter(function(edge) {
+            var fullEdgeColor = edge.color.color;
+            var colorMatch = edgeColorSelect.includes('all') || edgeColorSelect.some(function(ecs) {
+                return fullEdgeColor === ecs || fullEdgeColor.startsWith(ecs.split('-')[0]);
+            });
+
+            var widthMatch = true;
+            if (widthMin !== null) {
+                widthMatch = widthMatch && edge.width >= widthMin;
+            }
+            if (widthMax !== null) {
+                widthMatch = widthMatch && edge.width <= widthMax;
+            }
+
+            var nodeMatch = filteredNodes.some(function(n) {
+                return n.id === edge.from;
+            }) && filteredNodes.some(function(n) {
+                return n.id === edge.to;
+            });
+            return colorMatch && widthMatch && nodeMatch;
+        });
+
+        document.getElementById('node-count').textContent = filteredNodes.length;
+        document.getElementById('edge-count').textContent = filteredEdges.length;
+
+        nodes.clear();
+        nodes.add(filteredNodes);
+        edges.clear();
+        edges.add(filteredEdges);
+    }
+
+    function togglePanel(panelId) {
+        console.log("Toggling panel: " + panelId);
+        var panel = document.getElementById(panelId);
+        if (panel) {
+            panel.classList.toggle('panel-hidden');
+        } else {
+            console.error("Panel " + panelId + " not found!");
+        }
+    }
+
+    network.on("zoom", function(params) {
+        var scale = params.scale;
+        if (scale > lastScale) {
+            var pointerDOM = params.pointer.DOM;
+            var pointerCanvas = network.DOMtoCanvas(pointerDOM);
+            lastZoomCenter = pointerCanvas;
+            updateNodes(lastZoomCenter, 'in');
+        } else if (scale < lastScale) {
+            updateNodes(null, 'out');
+        }
+        lastScale = scale;
+    });
+
+    // Add Enter key handler for label-search input
+    document.getElementById('label-search').addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+            document.getElementById('label-suggestions').style.display = 'none';
+            updateNodes();
+        }
+    });
+
+    updateNodes();
+    </script>
+    
+    </body>
+    </html>
+    
